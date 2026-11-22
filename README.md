@@ -16,15 +16,15 @@
 
 ## הרצה מקומית
 
-המצלמה עובדת רק ב-`localhost` או ב-`https`, ולכן צריך שרת מקומי ולא פתיחה ישירה של הקובץ. לדוגמה, מתוך `bagback/site`:
+המצלמה עובדת רק ב-`localhost` או ב-`https`, ולכן צריך שרת מקומי ולא פתיחה ישירה של הקובץ. מתוך תיקיית הפרויקט:
 
 ```
-python -m http.server 8080
+powershell -ExecutionPolicy Bypass -File tools\dev-server.ps1
 ```
 
 ואז לפתוח בדפדפן את http://localhost:8080/
 
-השירותים החיצוניים (locabriques לרשימות חלקים, brickognize לזיהוי חלק מתמונה) עוברים דרך proxy רק כשהאתר רץ על `netlify.app`, כפי שמוגדר ב-`_redirects`. במקומי הדפדפן פונה אליהם ישירות, ועלול לחסום את הפנייה (CORS).
+השרת לא דורש התקנה של Node או Python. הוא גם מחקה את ה-`_redirects` של Netlify: הוא מעביר את `/lb/` ל-locabriques ואת `/bk/` ל-brickognize. בלי זה הדפדפן חוסם את הפניות ל-locabriques (CORS), וטעינת סטים לפי מספר לא עובדת.
 
 ## עדכון נתוני סטים
 
