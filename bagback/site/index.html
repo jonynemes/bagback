@@ -129,6 +129,23 @@ input[type=range]{width:100%;accent-color:var(--brand2)}
 .bagchip .c{font-size:11px;color:var(--mut)}
 .bagchip.on{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 25%,transparent)}
 .bagchip.done .n::after{content:"✓";color:var(--ok);margin-left:auto}
+/* collect checklist: parts start greyed out and take their real colour once collected */
+.cprog{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cprog .t{font-weight:800}
+.btn.sm{padding:6px 12px;font-size:13px;min-height:0}
+.pbar{height:6px;border-radius:99px;background:var(--line);margin:8px 0 12px;overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:99px;transition:width .4s}
+.ptiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px}
+.ptile{position:relative;border:1.5px solid var(--line);border-radius:12px;padding:6px 4px 8px;background:#fff;text-align:center;cursor:pointer;transition:box-shadow .25s,border-color .25s}
+.ptile img{width:56px;height:56px;object-fit:contain;filter:grayscale(1) brightness(1.15);opacity:.32;transition:filter .5s,opacity .5s,transform .3s}
+.ptile.part img{filter:grayscale(.35);opacity:.75}
+.ptile.full img{filter:none;opacity:1;transform:scale(1.04)}
+.ptile.full{border-color:var(--ok)}
+.ptile.full::after{content:"✓";position:absolute;top:3px;right:7px;color:var(--ok);font-weight:800}
+.ptile.now{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 30%,transparent)}
+.ptile .pq{display:block;font-size:13px;margin-top:2px}
+.ptile .pn{display:block;font-size:10.5px;line-height:1.25;color:var(--mut)}
+.ptile .pminus{position:absolute;top:2px;left:4px;width:22px;height:22px;border-radius:50%;background:#f1efea;font-weight:800;line-height:22px}
 .parts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .parts span{font-size:12px;background:#f4f2ee;border-radius:8px;padding:4px 8px;display:flex;gap:6px;align-items:center}
 .sw{width:12px;height:12px;border-radius:3px;border:1px solid #0002;display:inline-block}
@@ -603,8 +620,14 @@ function updOrder(o,patch,msg){ if(msg) toast(msg); FB().updateOrder(o.id,patch)
 const setsPending=new Set();
 function ensureSets(nums){ for(const n of new Set(nums)) if(n&&!SETS_BY_NUM[n]&&!setsPending.has(n)){ setsPending.add(n);
   loadLiveSet(n).then(refresh).catch(()=>{}); } }
-function refresh(){ if(st.tab==="sort") renderBags(); else render(true); }
-window.bpOnUser=uid=>{ ME_BUYER=ME_SELLER=uid; if(!uid){ const tab=st.tab; st=fresh(); st.tab=tab; USERS={}; } render(true); };
+function updPersona(){ const me=ME_BUYER?who(ME_BUYER):null;
+  $("persona").textContent=me?`Signed in as ${me.name}${me.city?" · "+me.city:""}`:"Not signed in";
+  $("authBtn").textContent=me?"Sign out":"Sign in"; }
+function refresh(){ updPersona(); if(st.tab==="sort") renderBags(); else render(true); }
+window.bpOnUser=uid=>{ uid=uid||null; if(uid===ME_BUYER) return;   // first "signed out" callback on load changes nothing
+  ME_BUYER=ME_SELLER=uid;
+  if(!uid){ st.shelves={}; st.orders=[]; st.activeOrder=null; USERS={}; }   // keep role/tab so the scanner isn't interrupted
+  refresh(); };
 window.bpOnUsers=(users,shelves)=>{ USERS=users; st.shelves=shelves; ensureSets(Object.values(shelves).flat()); refresh(); };
 window.bpOnOrders=list=>{ st.orders=list; ensureSets(list.map(o=>o.set)); refresh(); };
 const $=id=>document.getElementById(id);
@@ -650,9 +673,7 @@ const owners=num=>Object.entries(st.shelves).filter(([u,l])=>u!==ME_BUYER&&l.inc
 /* ===== rendering ===== */
 function render(keepScroll){
   $("roleBuyer").classList.toggle("on",st.role==="buyer"); $("roleSeller").classList.toggle("on",st.role==="seller");
-  const me=ME_BUYER?who(ME_BUYER):null;
-  $("persona").textContent=me?`Signed in as ${me.name}${me.city?" · "+me.city:""}`:"Not signed in";
-  $("authBtn").textContent=me?"Sign out":"Sign in";
+  updPersona();
   const tabs = st.role==="buyer"
     ? [["discover","🔍","Discover"],["orders","🧾","My orders"]]
     : [["sort","📷","Scan & sort"],["requests","📬","Requests"],["shelf","🗄️","My shelf"]];
@@ -823,18 +844,19 @@ function renderBags(){
   const o=curOrder(), done=o?o.bagsDone:[];
   const el=$("bagchips"); el.innerHTML="";
   const mk=(b)=>{const d=document.createElement("button"); const items=b?SET.items.filter(i=>+i.bag===b):SET.items, q=items.reduce((a,i)=>a+i.qty,0);
+    const have=b?q-bagLeft(b):0;
     d.className="bagchip"+(b===selBag?" on":"")+(b&&done.includes(b)?" done":""); d.style.setProperty("--c",b?bagColor(b):"#ff7a1a");
-    d.innerHTML=`<div class="n">${b?`<i style="background:${bagColor(b)}"></i>Bag ${b}`:"All bags"}</div><div class="c">${q} parts</div>`;
+    d.innerHTML=`<div class="n">${b?`<i style="background:${bagColor(b)}"></i>Bag ${b}`:"All bags"}</div><div class="c">${b&&have?`${have}/${q}`:q} parts</div>`;
     d.onclick=()=>{selBag=b;renderBags();if(result){labelComps(result);buildOverlay();}}; el.appendChild(d);};
   mk(0); bags().forEach(mk);
-  $("legend").innerHTML= selBag?`<span><i style="background:${bagColor(selBag)}"></i>Goes in bag ${selBag}</span><span>Everything else is dimmed</span>`:`<span>Each piece shows its bag number once the app is sure</span>`;
+  $("legend").innerHTML= selBag?`<span><i style="background:${bagColor(selBag)}"></i>Pick these into bag ${selBag}</span><span>Lift a piece or tap it to tick it off</span><span><i style="background:#fff;border:1.5px solid #111"></i>Touching: spread apart</span>`:`<span>Each piece shows its bag number once the app is sure</span>`;
   const p=$("bagPanel");
   if(!selBag){p.innerHTML=`<div class="meta"><div class="t">Pick a bag to start</div><div class="s">${SET.name} · ${total()} parts in ${bags().length} bags. ${SET.note||""}</div></div>`;}
   else{
-    const items=SET.items.filter(i=>+i.bag===selBag), isDone=done.includes(selBag);
-    p.innerHTML=`<div class="setrow" style="align-items:flex-start"><div class="meta"><div class="t">Bag ${selBag} · ${items.reduce((a,i)=>a+i.qty,0)} parts</div>
-      <div class="parts">${items.map(i=>`<span><i class="sw" style="background:${PALETTE[i.color].hex}"></i>${EN[i.color]||PALETTE[i.color].he} ${i.desc} ×${i.qty}</span>`).join("")}</div></div></div>
-      <button class="btn ${isDone?"ghost":"dark"} block" style="margin-top:12px" id="bagDone">${isDone?"✓ Bag "+selBag+" sorted · undo":"Mark bag "+selBag+" as sorted"}</button>`;
+    const isDone=done.includes(selBag), allIn=!bagLeft(selBag);
+    p.innerHTML=checklistHTML(selBag)+
+      `<button class="btn ${isDone?"ghost":allIn?"ok":"dark"} block" style="margin-top:12px" id="bagDone">${isDone?"✓ Bag "+selBag+" sorted · undo":allIn?"All pieces in · mark bag "+selBag+" as sorted":"Mark bag "+selBag+" as sorted"}</button>`;
+    wireChecklist(); markTiles();
     $("bagDone").onclick=()=>{ if(!o){toast("Practice mode: nothing to save");return;}
       const was=selBag, nd=isDone?o.bagsDone.filter(x=>x!==was):[...o.bagsDone,was];
       if(!isDone){ const nx=bags().find(b=>!nd.includes(b)); if(nx){selBag=nx; toast(`Bag ${was} done. Next: bag ${nx}`);} else toast("All bags sorted!"); }
@@ -1073,6 +1095,215 @@ const dimC=document.createElement("canvas");
 function buildOverlay(){ if(!result) return; Tracker.update(result); buildMaskInto(result,selBag,ovl,dimC); }
 function drawOverlay(){ if(!result) return; drawTracked(vctx,result,selBag,ovl,dimC,view.width,view.height); }
 function updateStats(){ const n=trackedCount(); $("stSure").textContent= selBag?`${n} for bag ${selBag} in view`:`${n} pieces identified`; }
+
+/* ===================== Collect mode =====================
+   - Only a few pieces of the chosen bag are highlighted at a time (FOCUS_N).
+   - Each piece the user lifts off the mat (or taps on screen) is ticked off in the bag's checklist,
+     where parts start greyed out and turn to their real colour once collected.
+   - Same part + colour in several bags: pieces are allotted by quantity (bag 1's share first, then the next).
+   - Unclear pieces are identified in the background with Brickognize, once per tracked piece (camera only).
+   - Pieces touching each other are flagged so the user can spread them apart. */
+const FOCUS_N=5;
+const sameId=(a,b)=>String(a).toLowerCase()===String(b).toLowerCase();
+const ldrawCol=(()=>{ const byName={}; for(const k in RB_COLORS) byName[RB_COLORS[k][0].toLowerCase()]=k;
+  return c=>{ if(/^rb\d+$/.test(c)) return c.slice(2); const p=PALETTE[c]; return p&&byName[String(p.he||"").toLowerCase()]||null; }; })();
+
+/* collected counts per item, per order (or practice) and set; kept on this device */
+const gotKey=()=>{ const o=curOrder(); return "bp_got_"+(o?o.id:"practice")+"_"+SET.name; };
+const GOTS={}; let undoStack=[];
+function got(){ const k=gotKey(); if(!GOTS[k]){ let a=null; try{ a=JSON.parse(localStorage.getItem(k)||"null"); }catch(e){}
+  GOTS[k]=(Array.isArray(a)&&a.length===SET.items.length)?a:SET.items.map(()=>0); } return GOTS[k]; }
+function saveGot(){ try{ localStorage.setItem(gotKey(),JSON.stringify(got())); }catch(e){} }
+const bagLeft=b=>{ const g=got(); return SET.items.reduce((s,it,i)=>s+(+it.bag===b?Math.max(0,(+it.qty||0)-g[i]):0),0); };
+
+/* which inventory lines a tracked piece could be: by recognised part id, else by colour + measured size */
+function itemCands(t){
+  const its=SET.items, out=[];
+  if(t.part){
+    for(let i=0;i<its.length;i++) if(its[i].part&&sameId(its[i].part,t.part)&&its[i].color===t.color) out.push(i);
+    if(!out.length) for(let i=0;i<its.length;i++) if(its[i].part&&baseId(its[i].part)===baseId(t.part)&&its[i].color===t.color) out.push(i);
+    if(out.length) return out;
+  }
+  const sc=S.scale;
+  for(let i=0;i<its.length;i++){ const it=its[i]; if(it.color!==t.color) continue;
+    if(sc){ const m=t.area/sc, s=studsOf(it); if(Math.abs(Math.log(m/s))>=Math.log(1.55)) continue; }
+    out.push(i); }
+  if(!out.length) for(let i=0;i<its.length;i++) if(its[i].color===t.color) out.push(i);
+  return out;
+}
+
+/* give each visible piece an inventory line, respecting quantities still needed */
+function allocate(){
+  const g=got(), left=SET.items.map((it,i)=>(+it.qty||0)-g[i]);
+  for(const t of Tracker.tracks){ t.item=null; t.amb=false; t.spare=false; }
+  const T=Tracker.tracks.filter(t=>!t.collected&&!t.merged&&t.key!==null&&t.seen>=3&&t.missed<=2)
+    .sort((a,b)=>(b.focus?1:0)-(a.focus?1:0)||a.id-b.id);
+  for(const t of T){
+    const c=itemCands(t); t.cands=c;
+    const kinds=new Set(c.map(i=>String(SET.items[i].part||SET.items[i].desc).toLowerCase()));
+    t.multiKind=!t.part&&kinds.size>1;
+    if(t.multiKind&&new Set(c.map(i=>+SET.items[i].bag)).size>1){ t.amb=true; continue; }
+    const pick=c.slice().sort((a,b)=>SET.items[a].bag-SET.items[b].bag||a-b).find(i=>left[i]>0);
+    if(pick==null){ t.spare=true; continue; }
+    t.item=pick; left[pick]--;
+  }
+}
+/* keep up to FOCUS_N pieces of the chosen bag highlighted; sticky so the highlight doesn't jump around */
+function updateFocus(){
+  const want=t=>t.item!=null&&!t.collected&&(!selBag||+SET.items[t.item].bag===selBag);
+  for(const t of Tracker.tracks) if(t.focus&&!want(t)) t.focus=false;
+  let n=Tracker.tracks.filter(t=>t.focus).length; if(n>=FOCUS_N) return;
+  const W=result.W,H=result.H;
+  for(const t of Tracker.tracks.filter(t=>!t.focus&&want(t)&&t.missed===0).sort((a,b)=>Math.hypot(a.x-W/2,a.y-H/2)-Math.hypot(b.x-W/2,b.y-H/2))){
+    if(n>=FOCUS_N) break; t.focus=true; n++; }
+}
+/* a highlighted piece vanished from its spot while the rest of the pile stayed in view: it was picked up */
+function detectPicked(){
+  const W=result.W,H=result.H, seen=Tracker.tracks.filter(o=>o.seen>=3);
+  const missingNow=seen.filter(o=>o.missed>=1).length;
+  for(const t of Tracker.tracks){
+    if(!t.focus||t.collected||t.missed!==3||t.seen<5||t.item==null) continue;
+    const others=seen.filter(o=>o!==t), ok=others.filter(o=>o.missed===0).length;
+    const steady=others.length<2||(ok/others.length>=0.6&&missingNow<=3);
+    const inside=t.x>W*0.08&&t.x<W*0.92&&t.y>H*0.08&&t.y<H*0.92;
+    if(steady&&inside) collect(t,true);
+  }
+}
+function collect(t,auto){
+  const i=t.item; if(i==null||t.collected) return;
+  const g=got(), it=SET.items[i]; if(g[i]>=(+it.qty||0)) return;
+  g[i]++; saveGot(); t.collected=true; t.focus=false; undoStack.push({k:gotKey(),i});
+  toast(`✓ ${EN[it.color]||PALETTE[it.color].he} ${it.desc} → bag ${it.bag}${auto?" · wrong? tap Undo":""}`);
+  renderBags();
+}
+
+/* background identification with Brickognize: one request per unclear piece, a few at a time */
+const BKQ={busy:0,max:3};
+function bkPump(){
+  if(mode!=="cam"||frozen||!result) return;
+  const rel=t=>!selBag||(t.cands||[]).some(i=>+SET.items[i].bag===selBag);
+  const q=Tracker.tracks.filter(t=>!t.part&&!t.collected&&!t.merged&&!t.bkBusy&&t.missed===0&&t.seen>=4
+      &&t.comp&&t.comp._r===result&&(t.bkTries||0)<2&&Date.now()>(t.bkAt||0)&&(t.amb||t.multiKind)&&rel(t))
+    .sort((a,b)=>(b.focus?1:0)-(a.focus?1:0)||(b.amb?1:0)-(a.amb?1:0));
+  while(BKQ.busy<BKQ.max&&q.length) bkAsk(q.shift());
+}
+async function bkAsk(t){
+  const r=result, c=t.comp; if(!r._boxes) r._boxes=compBoxes(r); const b=r._boxes[c.id]; if(!b||!crop) return;
+  t.bkBusy=true; t.bkTries=(t.bkTries||0)+1; BKQ.busy++;
+  try{
+    const k=crop[2]/r.W, pad=Math.max(6,(b[2]-b[0]+b[3]-b[1])*0.25);
+    const x0=crop[0]+Math.max(0,b[0]-pad)*k, y0=crop[1]+Math.max(0,b[1]-pad)*k, x1=crop[0]+Math.min(r.W,b[2]+pad)*k, y1=crop[1]+Math.min(r.H,b[3]+pad)*k;
+    const cw=Math.max(8,x1-x0), ch=Math.max(8,y1-y0), sc=Math.min(1,480/Math.max(cw,ch)), cc=document.createElement("canvas");
+    cc.width=Math.round(cw*sc); cc.height=Math.round(ch*sc); cc.getContext("2d").drawImage(video,x0,y0,cw,ch,0,0,cc.width,cc.height);
+    const blob=await new Promise(ok=>cc.toBlob(ok,"image/jpeg",0.9)); const fd=new FormData(); fd.append("query_image",blob,"piece.jpg");
+    const rr=await fetch(BK_URL+"?top_k_items=3",{method:"POST",body:fd,headers:{accept:"application/json"}}); if(!rr.ok) throw new Error("http "+rr.status);
+    const it=((await rr.json()).items||[])[0];
+    if(it&&it.score>=0.5){ t.part=it.id; t.pname=it.name; t.bk="done"; } else { t.bk="unclear"; t.bkAt=Date.now()+1500; }
+  }catch(e){ t.bk="error"; t.bkAt=Date.now()+3000; }
+  finally{ t.bkBusy=false; BKQ.busy--; }
+}
+
+/* tracker: remember each piece's region this frame and whether it is several pieces touching */
+{ const _upd=Tracker.update.bind(Tracker);
+  Tracker.update=function(r){ if(r._tracked) return; _upd(r);
+    for(const c of r.comps) if(c.track){ c._r=r; c.track.comp=c; c.track.merged=c.est>1; } }; }
+
+/* overlay: highlighted pieces get their bag colour, touching pieces a white outline, everything else dims */
+function buildMaskInto(r,bag,ovlC,dimC){
+  const W=r.W,H=r.H,cs=r.comps, L=r.labels;
+  ovlC.width=W; ovlC.height=H; dimC.width=W; dimC.height=H;
+  const oc=ovlC.getContext("2d"), dc=dimC.getContext("2d");
+  const im=oc.createImageData(W,H), d=im.data, dm=dc.createImageData(W,H), dd=dm.data;
+  const col=cs.map(c=>{ const t=c.track; if(c.tiny||!t||t.collected) return null;
+    if(t.focus&&t.item!=null) return _hexRgb(bagColor(+SET.items[t.item].bag));
+    if(t.merged&&(!bag||SET.items.some(it=>+it.bag===bag&&it.color===t.color))) return [255,255,255]; return null; });
+  const fill=cs.map(c=>!!(c.track&&c.track.focus));
+  for(let i=0,p=0;i<L.length;i++,p+=4){ const l=L[i];
+    if(l<0||!col[l]){ if(bag) dd[p+3]=165; continue; }
+    const x=i%W, e=x===0||x===W-1||i<W||i>=L.length-W||L[i-1]!==l||L[i+1]!==l||L[i-W]!==l||L[i+W]!==l;
+    if(!e&&!fill[l]) continue;
+    const c=col[l]; d[p]=c[0];d[p+1]=c[1];d[p+2]=c[2]; d[p+3]= e?255:(bag?60:0);
+  }
+  oc.putImageData(im,0,0); dc.putImageData(dm,0,0);
+}
+function drawTracked(ctx,r,bag,ovlC,dimC,cw,ch){
+  ctx.save(); ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality="high";
+  if(bag) ctx.drawImage(dimC,0,0,cw,ch);
+  ctx.drawImage(ovlC,0,0,cw,ch); ctx.restore();
+  const sx=cw/r.W, sy=ch/r.H, R0=Math.max(13,cw/42), pulse=0.5+0.5*Math.sin(performance.now()/260);
+  ctx.save(); ctx.textAlign="center"; ctx.textBaseline="middle";
+  for(const t of Tracker.tracks){
+    const rel=!bag||(t.cands||[]).some(i=>+SET.items[i].bag===bag);
+    const touchRel=t.merged&&(!bag||SET.items.some(it=>+it.bag===bag&&it.color===t.color&&bagLeft(bag)));
+    const kind=t.collected?null: (t.focus&&t.item!=null)?"pick": touchRel?"touch": (t.amb&&rel&&(t.bkBusy||t.bkTries))?"unsure": null;
+    if(kind){ t.kind=kind; if(kind==="pick") t.lastBag=+SET.items[t.item].bag; }
+    t.alpha=(t.alpha||0)+(((kind&&t.missed<=2)?1:0)-(t.alpha||0))*0.2;
+    t.dx+=(t.x-t.dx)*0.3; t.dy+=(t.y-t.dy)*0.3;
+    if(t.alpha<0.03||!t.kind) continue;
+    const x=t.dx*sx, y=t.dy*sy; if(x<R0||x>cw-R0||y<R0||y>ch-R0) continue;
+    const R=R0*(0.75+0.25*t.alpha); ctx.globalAlpha=t.alpha;
+    let fill="#fff", fg="#111", txt="!";
+    if(t.kind==="pick"){ fill=bagColor(t.lastBag); fg="#fff"; txt=String(t.lastBag);
+      ctx.strokeStyle=fill; ctx.lineWidth=Math.max(2,R*0.12); ctx.globalAlpha=t.alpha*(0.35+0.4*pulse);
+      ctx.beginPath(); ctx.arc(x,y,R*(1.35+0.25*pulse),0,7); ctx.stroke(); ctx.globalAlpha=t.alpha; }
+    else if(t.kind==="unsure"){ fill="rgba(25,25,25,.85)"; fg="#fff"; txt=t.bkBusy?"…":"?"; }
+    ctx.shadowColor="rgba(0,0,0,.45)"; ctx.shadowBlur=R*0.6; ctx.fillStyle=fill;
+    ctx.beginPath(); ctx.arc(x,y,R,0,7); ctx.fill(); ctx.shadowBlur=0;
+    ctx.lineWidth=Math.max(2,R*0.14); ctx.strokeStyle=t.kind==="touch"?"#111":"#fff"; ctx.stroke();
+    ctx.fillStyle=fg; ctx.font=`800 ${Math.round(R*1.1)}px "Plus Jakarta Sans",system-ui,sans-serif`; ctx.fillText(txt,x,y+1);
+  }
+  ctx.restore();
+}
+function buildOverlay(){ if(!result) return; Tracker.update(result); detectPicked(); allocate(); updateFocus(); bkPump(); buildMaskInto(result,selBag,ovl,dimC); markTiles(); }
+function drawOverlay(){ if(!result) return; drawTracked(vctx,result,selBag,ovl,dimC,view.width,view.height); }
+function updateStats(){
+  const pick=Tracker.tracks.filter(t=>t.focus&&!t.collected).length, touch=Tracker.tracks.filter(t=>t.kind==="touch"&&t.alpha>0.5).length;
+  $("stSure").textContent=(selBag?(bagLeft(selBag)?`Pick ${pick} · ${bagLeft(selBag)} left in bag ${selBag}`:`Bag ${selBag} complete ✓`):`${pick} highlighted`)
+    +(touch?` · ${touch} touching`:"");
+}
+
+/* tap a piece on screen: collect it, or explain why it isn't highlighted */
+view.addEventListener("click",e=>{
+  if(!result||!mode) return;
+  const rc=view.getBoundingClientRect(), x=(e.clientX-rc.left)/rc.width*result.W, y=(e.clientY-rc.top)/rc.height*result.H;
+  let best=null, bd=(result.W*0.06)**2;
+  for(const t of Tracker.tracks){ if(t.collected||t.missed>2) continue; const d=(t.dx-x)**2+(t.dy-y)**2; if(d<bd){bd=d;best=t;} }
+  if(!best) return;
+  if(best.merged) toast("These pieces are touching. Spread them apart so each one stands alone.");
+  else if(best.amb) toast(best.bkBusy?"Identifying this piece…":mode==="cam"?"Not sure which piece this is yet. Move it apart from the others or turn it over.":"Not sure which piece this is. With the camera, Backpack asks Brickognize.");
+  else if(best.item!=null&&(!selBag||+SET.items[best.item].bag===selBag)) collect(best,false);
+  else if(best.item!=null) toast(`That one goes in bag ${SET.items[best.item].bag}.`);
+  else if(best.spare) toast("All of these are already collected.");
+  else toast("This piece isn't in this set's list.");
+});
+
+/* bag checklist: greyed until collected, real colour when done */
+const drawnCache={};
+function drawnImg(it){ const k=it.color+"|"+it.desc; if(drawnCache[k]) return drawnCache[k];
+  const c=document.createElement("canvas"); c.width=c.height=96; const sh=parseShape(it.desc), u=Math.min(26,70/Math.max(sh.a,sh.b));
+  if(PALETTE[it.color]) drawPiece(c.getContext("2d"),{color:it.color,shape:sh,x:48,y:44,r:0},u); return drawnCache[k]=c.toDataURL(); }
+function partImg(it){ const lc=ldrawCol(it.color); return it.part&&lc!=null?`https://cdn.rebrickable.com/media/parts/ldraw/${lc}/${encodeURIComponent(it.part)}.png`:drawnImg(it); }
+function tileFb(el){ el.onerror=null; const it=SET.items[+el.closest(".ptile").dataset.i]; if(it) el.src=drawnImg(it); }
+function checklistHTML(bag){
+  const g=got(), rows=SET.items.map((it,i)=>({it,i})).filter(x=>+x.it.bag===bag);
+  const need=rows.reduce((s,x)=>s+(+x.it.qty||0),0), have=rows.reduce((s,x)=>s+Math.min(g[x.i],+x.it.qty||0),0);
+  const canUndo=undoStack.length&&undoStack[undoStack.length-1].k===gotKey();
+  return `<div class="cprog"><div class="t">Bag ${bag} · ${have}/${need} collected</div>${canUndo?`<button class="btn ghost sm" id="undoPick">Undo</button>`:""}</div>
+    <div class="pbar"><i style="width:${need?Math.round(have/need*100):0}%;background:${bagColor(bag)}"></i></div>
+    <div class="ptiles">${rows.map(({it,i})=>{ const q=+it.qty||0, n=Math.min(g[i],q), cls=n>=q?"full":n?"part":"";
+      return `<div class="ptile ${cls}" data-i="${i}" style="--c:${bagColor(bag)}"><img src="${partImg(it)}" onerror="tileFb(this)" loading="lazy" alt="">
+        <b class="pq">${n}/${q}</b><span class="pn">${esc(EN[it.color]||(PALETTE[it.color]||{}).he||"")} ${esc(it.desc)}</span>
+        ${n?`<button class="pminus" data-m="${i}" aria-label="Remove one">−</button>`:""}</div>`; }).join("")}</div>`;
+}
+function wireChecklist(){
+  const p=$("bagPanel");
+  p.querySelectorAll(".ptile").forEach(el=>el.onclick=e=>{ if(e.target.closest(".pminus")) return; const i=+el.dataset.i, g=got();
+    if(g[i]<(+SET.items[i].qty||0)){ g[i]++; saveGot(); undoStack.push({k:gotKey(),i}); renderBags(); } });
+  p.querySelectorAll(".pminus").forEach(b=>b.onclick=()=>{ const i=+b.dataset.m, g=got(); if(g[i]>0){ g[i]--; saveGot(); renderBags(); } });
+  if($("undoPick")) $("undoPick").onclick=()=>{ const u=undoStack.pop(); if(!u||u.k!==gotKey()) return; const g=got(); if(g[u.i]>0){ g[u.i]--; saveGot(); } toast("Undone"); renderBags(); };
+}
+function markTiles(){ const f=new Set(Tracker.tracks.filter(t=>t.focus&&t.item!=null).map(t=>t.item));
+  document.querySelectorAll("#bagPanel .ptile").forEach(el=>el.classList.toggle("now",f.has(+el.dataset.i))); }
 
 /* ===== Brickognize: identify unclear pieces on a frozen frame ===== */
 const BK_PROXY=/netlify\.app$/.test(location.hostname);
