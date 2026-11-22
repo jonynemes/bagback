@@ -1,0 +1,18 @@
+# OS / editor
+Thumbs.db
+.DS_Store
+desktop.ini
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+
+# Secrets
+.env
+.env.*
+
+# Netlify / Firebase local state
+.netlify/
+.firebase/
+*.log

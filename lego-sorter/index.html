@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>ממיין שקיות – אב טיפוס</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d10;--panel:#14171c;--panel2:#1a1e25;--line:#262b34;--txt:#f3f5f8;--mut:#8b94a3;
+    --brand:#ffcf33;--brand2:#ff8a1f;--maybe:#ffffff;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:Heebo,system-ui,-apple-system,Arial,sans-serif}
+  body{display:flex;flex-direction:column;min-height:100dvh}
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+
+  /* ---------- stage ---------- */
+  #stage{position:relative;flex:1 1 auto;min-height:56vh;background:#000;overflow:hidden}
+  #view{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .topbar{position:absolute;top:0;inset-inline:0;display:flex;align-items:center;justify-content:space-between;
+    padding:12px 14px;background:linear-gradient(#000c,#0000);z-index:3}
+  .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:17px;letter-spacing:.2px}
+  .logo i{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--brand),var(--brand2));
+    display:grid;place-items:center;box-shadow:0 2px 10px #ff8a1f55}
+  .logo i::before{content:"";width:12px;height:12px;border-radius:50%;background:#0003;box-shadow:inset 0 2px 0 #fff6}
+  .chip{background:#ffffff1a;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid #ffffff22;
+    padding:7px 12px;border-radius:999px;font-size:13px;font-weight:500}
+  .reticle{position:absolute;inset:16% 8%;pointer-events:none;z-index:2;opacity:.9}
+  .reticle span{position:absolute;width:26px;height:26px;border:3px solid #fff;border-radius:3px}
+  .reticle span:nth-child(1){top:0;right:0;border-left:0;border-bottom:0}
+  .reticle span:nth-child(2){top:0;left:0;border-right:0;border-bottom:0}
+  .reticle span:nth-child(3){bottom:0;right:0;border-left:0;border-top:0}
+  .reticle span:nth-child(4){bottom:0;left:0;border-right:0;border-top:0}
+  .scanline{position:absolute;inset-inline:8%;height:2px;top:16%;z-index:2;pointer-events:none;
+    background:linear-gradient(90deg,#0000,var(--brand),#0000);box-shadow:0 0 18px var(--brand);animation:scan 2.6s ease-in-out infinite}
+  @keyframes scan{0%,100%{top:16%;opacity:.0}10%{opacity:.9}50%{top:84%;opacity:.9}60%{opacity:0}}
+  .hud{position:absolute;bottom:12px;inset-inline:12px;display:flex;justify-content:space-between;align-items:center;z-index:3}
+  .stat{display:flex;gap:6px}
+  .stat .chip b{font-weight:800}
+  .fab{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:18px}
+  .live .reticle,.live .scanline,.live .hud,.live .topbar .chip{display:flex}
+  #stage:not(.live) .reticle,#stage:not(.live) .scanline,#stage:not(.live) .hud{display:none}
+
+  /* ---------- intro ---------- */
+  #intro{position:fixed;inset:0;z-index:8;display:flex;flex-direction:column;padding:12px 22px calc(22px + env(safe-area-inset-bottom));overflow:auto;
+    background:radial-gradient(120% 70% at 80% 0%,#ff8a1f33,#0000 60%),radial-gradient(90% 60% at 0% 30%,#ffcf3322,#0000 60%),#0b0d10}
+  #intro h1{font-size:34px;line-height:1.1;margin:0 0 8px;font-weight:800}
+  #intro h1 em{font-style:normal;background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  #intro p.lead{color:var(--mut);margin:0 0 18px;font-size:15px;line-height:1.5}
+  .steps{display:grid;gap:10px;margin-bottom:20px}
+  .step{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .step b{flex:0 0 30px;height:30px;border-radius:9px;display:grid;place-items:center;background:#ffcf331f;color:var(--brand);font-weight:800}
+  .step span{font-size:14px;color:#d5dae2;line-height:1.4}
+  .cta{display:grid;gap:10px}
+  .btn{padding:15px 16px;border-radius:14px;font-weight:700;font-size:16px;text-align:center}
+  .btn.pri{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#1a1100;box-shadow:0 8px 24px #ff8a1f40}
+  .btn.sec{background:var(--panel2);border:1px solid var(--line)}
+  #camErr{color:#ff8f8f;font-size:13px;line-height:1.5;margin:10px 0 0;min-height:1em}
+  .bricks{display:block;width:calc(100% + 44px);margin:0 -22px;height:30vh;min-height:170px;flex:0 0 auto;pointer-events:none}
+  .spacer{flex:1 1 12px}
+
+  /* ---------- bottom sheet ---------- */
+  .sheetbar{background:var(--panel);border-top:1px solid var(--line);border-radius:20px 20px 0 0;margin-top:-18px;position:relative;z-index:4;
+    padding:10px 0 calc(14px + env(safe-area-inset-bottom))}
+  .grab{width:38px;height:4px;border-radius:4px;background:#ffffff26;margin:0 auto 10px}
+  .sbhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:0 16px 8px}
+  .sbhead h3{margin:0;font-size:15px;font-weight:700}
+  .sbhead small{color:var(--mut);font-size:12px}
+  .link{color:var(--brand);font-weight:600;font-size:13px;padding:6px 0}
+  .bags{display:flex;gap:10px;overflow-x:auto;padding:4px 16px 6px;scroll-snap-type:x mandatory;scrollbar-width:none}
+  .bags::-webkit-scrollbar{display:none}
+  .bag{flex:0 0 auto;scroll-snap-align:start;min-width:112px;text-align:start;background:var(--panel2);border:1.5px solid var(--line);
+    border-radius:16px;padding:10px 12px;transition:.15s}
+  .bag .n{font-size:12px;color:var(--mut);font-weight:500}
+  .bag .big{font-size:22px;font-weight:800;line-height:1.2;display:flex;align-items:center;gap:6px}
+  .bag .big i{width:10px;height:10px;border-radius:50%}
+  .bag .sw{display:flex;gap:3px;margin-top:6px}
+  .bag .sw span{width:12px;height:12px;border-radius:3px;border:1px solid #ffffff2a}
+  .bag .cnt{font-size:12px;color:var(--mut);margin-top:6px}
+  .bag .cnt b{color:var(--txt)}
+  .bag.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,var(--panel2));box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 22%,transparent)}
+  .legend{display:flex;gap:14px;padding:8px 16px 0;font-size:12px;color:var(--mut);flex-wrap:wrap}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .legend i{width:12px;height:12px;border-radius:4px;display:inline-block}
+
+  /* ---------- modals ---------- */
+  .modal{position:fixed;inset:0;background:#000a;display:none;align-items:flex-end;justify-content:center;z-index:10}
+  .modal.show{display:flex;animation:fade .15s}
+  @keyframes fade{from{opacity:0}}
+  .sheet{background:var(--panel);width:100%;max-width:640px;max-height:90vh;overflow:auto;border-radius:22px 22px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line);animation:up .2s ease-out}
+  @keyframes up{from{transform:translateY(30px)}}
+  .sheet h2{font-size:18px;margin:4px 0 4px}
+  .muted{color:var(--mut);font-size:13px;line-height:1.5}
+  .colors{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:12px 0}
+  .colors button{display:flex;align-items:center;gap:8px;font-size:14px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
+  .colors button.cur{border-color:var(--brand)}
+  .swatch{width:18px;height:18px;border-radius:5px;border:1px solid #ffffff30;flex:0 0 auto}
+  .row{display:grid;grid-template-columns:52px 1fr 58px 1fr 30px;gap:6px;margin-bottom:6px;align-items:center}
+  .row input,.row select,textarea,.field{width:100%;background:#0d1014;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit;font-size:13px}
+  .hdr{font-size:12px;color:var(--mut)}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .btns .btn{padding:11px 14px;font-size:14px}
+  details{margin-top:12px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+  summary{cursor:pointer;font-size:14px;font-weight:600}
+  label{display:block;font-size:13px;color:var(--mut);margin-top:10px}
+  input[type=range]{width:100%;accent-color:var(--brand)}
+  #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#111c;backdrop-filter:blur(8px);border:1px solid #fff2;padding:9px 16px;border-radius:999px;font-size:13px;display:none;z-index:20}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="view" width="960" height="640"></canvas>
+  <div class="topbar">
+    <div class="logo"><i></i>ממיין שקיות</div>
+    <button class="chip" id="menuBtn">⚙︎ הגדרות</button>
+  </div>
+  <div class="reticle"><span></span><span></span><span></span><span></span></div>
+  <div class="scanline"></div>
+  <div class="hud">
+    <div class="stat"><span class="chip" id="stSure"></span><span class="chip" id="stMaybe"></span></div>
+    <button class="chip fab" id="freeze" title="הקפא">❚❚</button>
+  </div>
+
+  <div id="intro">
+    <canvas class="bricks" id="introArt"></canvas><div class="spacer"></div>
+    <h1>מפרקים, מעבירים את הטלפון,<br><em>וכל חלק חוזר לשקית שלו.</em></h1>
+    <p class="lead" id="setLead"></p>
+    <div class="steps">
+      <div class="step"><b>1</b><span>שופכים את החלקים על משטח בצבע אחיד ומפזרים לשכבה אחת</span></div>
+      <div class="step"><b>2</b><span>בוחרים שקית, למשל "שקית 1"</span></div>
+      <div class="step"><b>3</b><span>מעבירים את הטלפון מעל הערימה. כל חלק ששייך לשקית מסומן מיד</span></div>
+    </div>
+    <div class="cta">
+      <button class="btn pri" id="camBtn">הפעל מצלמה</button>
+      <button class="btn sec" id="demoBtn">צפה בהדגמה: ערימה של 500 חלקים</button>
+    </div>
+    <p id="camErr"></p>
+  </div>
+</div>
+
+<div class="sheetbar">
+  <div class="grab"></div>
+  <div class="sbhead">
+    <div><h3 id="setTitle"></h3><small id="setSub"></small></div>
+    <div style="display:flex;gap:12px;white-space:nowrap;flex:0 0 auto"><button class="link" id="swapBtn">החלף סט</button><button class="link" id="editBtn">עריכה</button></div>
+  </div>
+  <div class="bags" id="bags"></div>
+  <div class="legend" id="legend"></div>
+</div>
+
+<!-- piece sheet -->
+<div class="modal" id="pieceModal"><div class="sheet">
+  <h2 id="pieceTitle"></h2>
+  <div class="muted" id="pieceInfo"></div>
+  <div class="muted" style="margin-top:10px">הצבע לא נכון? בחר את הצבע האמיתי, והאפליקציה תלמד אותו:</div>
+  <div class="colors" id="pieceColors"></div>
+  <div class="btns"><button class="btn sec" id="pieceClose">סגור</button></div>
+</div></div>
+
+<!-- settings sheet -->
+<div class="modal" id="setModalS"><div class="sheet">
+  <h2>הגדרות זיהוי</h2>
+  <label>הפרדה מהרקע: <b id="thrV"></b></label>
+  <input type="range" id="thr" min="8" max="45" value="18">
+  <label>גודל חלק מינימלי: <b id="minV"></b></label>
+  <input type="range" id="minA" min="8" max="200" value="22">
+  <p class="muted">נגיעה בחלק על המסך פותחת תיקון צבע. כל תיקון מלמד את האפליקציה איך הצבע נראה בתאורה שלך.</p>
+  <div class="btns">
+    <button class="btn sec" id="resetCal">אפס כיול צבעים</button>
+    <button class="btn sec" id="newPile">ערבב ערימת הדגמה</button>
+    <button class="btn sec" id="backIntro">חזרה למסך הפתיחה</button>
+    <button class="btn pri" id="closeS">סגור</button>
+  </div>
+</div></div>
+
+<!-- set editor -->
+<div class="modal" id="setModal"><div class="sheet">
+  <h2>עריכת סט</h2>
+  <p class="muted">לכל שקית: אילו צבעים יש בה וכמה. התיאור (למשל "לבנה 2x4") משמש גם לציור ערימת ההדגמה.</p>
+  <input id="setName" class="field" placeholder="שם הסט">
+  <div class="row hdr" style="margin-top:12px"><span>שקית</span><span>צבע</span><span>כמות</span><span>תיאור</span><span></span></div>
+  <div id="rows"></div>
+  <div class="btns">
+    <button class="btn sec" id="addRow">+ שורה</button>
+    <button class="btn pri" id="saveSet">שמור</button>
+    <button class="btn sec" id="cancelSet">ביטול</button>
+  </div>
+  <details>
+    <summary>ייבוא / ייצוא</summary>
+    <textarea id="json" rows="6" style="margin-top:8px"></textarea>
+    <div class="btns"><button class="btn sec" id="copyJson">העתק</button><button class="btn sec" id="loadJson">טען מהטקסט</button><button class="btn sec" id="demoSet">סט ההדגמה (500)</button><button class="btn sec" id="realSet">31058 דינוזאורים</button></div>
+  </details>
+</div></div>
+
+<div id="toast"></div>
+<video id="video" playsinline muted autoplay style="display:none"></video>
+
+<script id="core">
+/* ================= colours ================= */
+const PALETTE = {
+  white:{he:"לבן",hex:"#F4F4F4"}, black:{he:"שחור",hex:"#1B2A34"}, red:{he:"אדום",hex:"#C91A09"},
+  blue:{he:"כחול",hex:"#0055BF"}, yellow:{he:"צהוב",hex:"#F2CD37"}, green:{he:"ירוק",hex:"#237841"},
+  bgreen:{he:"ירוק בהיר",hex:"#4B9F4A"}, lime:{he:"ליים",hex:"#BBE90B"}, orange:{he:"כתום",hex:"#FE8A18"},
+  lbg:{he:"אפור בהיר",hex:"#A0A5A9"}, dbg:{he:"אפור כהה",hex:"#6C6E68"}, brown:{he:"חום",hex:"#582A12"},
+  tan:{he:"בז'",hex:"#E4CD9E"}, dtan:{he:"בז' כהה",hex:"#958A73"}, dred:{he:"אדום כהה",hex:"#720E0F"},
+  dblue:{he:"כחול כהה",hex:"#0A3463"}, azure:{he:"תכלת",hex:"#36AEBF"}, mblue:{he:"כחול בינוני",hex:"#5A93DB"},
+  dgreen:{he:"ירוק כהה",hex:"#184632"}, sgreen:{he:"ירוק חול",hex:"#A0BCAC"}, pink:{he:"ורוד",hex:"#E4ADC8"},
+  magenta:{he:"מג'נטה",hex:"#923978"}, nougat:{he:"נוגט",hex:"#AA7D55"}, gold:{he:"זהב",hex:"#AA7F2E"},
+  purple:{he:"סגול",hex:"#81007B"}, dorange:{he:"כתום כהה",hex:"#A95500"}, torange:{he:"כתום שקוף",hex:"#F08F1C"}
+};
+const LIN=new Float32Array(256);
+for(let i=0;i<256;i++){const c=i/255;LIN[i]=c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
+function linToLab(r,g,b){
+  const x=(r*0.4124+g*0.3576+b*0.1805)/0.95047,y=r*0.2126+g*0.7152+b*0.0722,z=(r*0.0193+g*0.1192+b*0.9505)/1.08883;
+  const fx=x>0.008856?Math.cbrt(x):7.787*x+16/116, fy=y>0.008856?Math.cbrt(y):7.787*y+16/116, fz=z>0.008856?Math.cbrt(z):7.787*z+16/116;
+  return [116*fy-16,500*(fx-fy),200*(fy-fz)];
+}
+function hexToLab(h){const n=parseInt(h.slice(1),16);return linToLab(LIN[n>>16&255],LIN[n>>8&255],LIN[n&255]);}
+for(const k in PALETTE) PALETTE[k].lab=hexToLab(PALETTE[k].hex);
+
+/* ================= analysis =================
+   1. background = most common colour (works even when the pile fills most of the frame)
+   2. every non-background pixel is classified to the nearest colour OF THIS SET
+   3. majority filter cleans studs/edges, then connected regions of the same colour = pieces
+   This separates touching pieces of different colours. Touching pieces of the same colour
+   become one region; we estimate how many pieces it contains from its size. */
+const S={bg:null};
+/* Lab for every 5-bit-per-channel RGB bin, computed once */
+const QB=32, QN=QB*QB*QB, QL=new Float32Array(QN), QA=new Float32Array(QN), QBb=new Float32Array(QN);
+for(let r=0;r<QB;r++)for(let g=0;g<QB;g++)for(let b=0;b<QB;b++){const i=(r<<10)|(g<<5)|b, l=linToLab(LIN[r*8+4],LIN[g*8+4],LIN[b*8+4]);QL[i]=l[0];QA[i]=l[1];QBb[i]=l[2];}
+function analyze(data,W,H,opt){
+  const N=W*H, q=new Uint16Array(N);
+  for(let i=0,p=0;i<N;i++,p+=4) q[i]=((data[p]>>3)<<10)|((data[p+1]>>3)<<5)|(data[p+2]>>3);
+  // background = most common colour (coarse Lab histogram)
+  const hist=new Map(); const key=k=>((QL[k]/7)|0)*4096+(((QA[k]+128)/7)|0)*64+(((QBb[k]+128)/7)|0);
+  for(let i=0;i<N;i+=3){const k=key(q[i]); hist.set(k,(hist.get(k)||0)+1);}
+  let bk=0,bc=-1; for(const [k,c] of hist) if(c>bc){bc=c;bk=k;}
+  let sl=0,sa=0,sb=0,sn=0; for(let i=0;i<N;i+=3){const k=q[i]; if(key(k)===bk){sl+=QL[k];sa+=QA[k];sb+=QBb[k];sn++;}}
+  let bg=[sl/sn,sa/sn,sb/sn];
+  if(S.bg&&!opt.resetBg){const d=Math.hypot(bg[0]-S.bg[0],bg[1]-S.bg[1],bg[2]-S.bg[2]); if(d<25) bg=S.bg.map((v,i)=>v*0.7+bg[i]*0.3);}
+  S.bg=bg;
+  // classify each colour bin once (-1 = background)
+  const ref=[]; opt.colors.forEach((id,ci)=>{const list=(opt.refs[id]&&opt.refs[id].length)?opt.refs[id].concat([PALETTE[id].lab]):[PALETTE[id].lab]; for(const r of list) ref.push(r[0],r[1],r[2],ci);});
+  const nR=ref.length/4, K=opt.colors.length, T2=opt.thr*opt.thr, lut=new Int8Array(QN).fill(-2);
+  const cls=new Int8Array(N);
+  for(let i=0;i<N;i++){
+    const k=q[i]; let c=lut[k];
+    if(c===-2){
+      const dl=QL[k]-bg[0],da=QA[k]-bg[1],db=QBb[k]-bg[2];
+      if(dl*dl*0.6+da*da+db*db<T2) c=-1;
+      else{let bd=1e9; for(let r=0;r<nR;r++){const o=r*4,x=(QL[k]-ref[o])*0.55,y=QA[k]-ref[o+1],z=QBb[k]-ref[o+2],d=x*x+y*y+z*z; if(d<bd){bd=d;c=ref[o+3];}}}
+      lut[k]=c;
+    }
+    cls[i]=c;
+  }
+  // 3x3 majority filter
+  const f=new Int8Array(N), nb=new Int8Array(9);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    let n=0; for(let dy=-1;dy<=1;dy++){const yy=y+dy; if(yy<0||yy>=H) continue; for(let dx=-1;dx<=1;dx++){const xx=x+dx; if(xx>=0&&xx<W) nb[n++]=cls[yy*W+xx];}}
+    let best=cls[y*W+x],bn=0; for(let a=0;a<n;a++){let m=0; for(let b2=0;b2<n;b2++) if(nb[b2]===nb[a]) m++; if(m>bn){bn=m;best=nb[a];}}
+    f[y*W+x]= bn*2>n ? best : cls[y*W+x];
+  }
+  // connected regions of the same colour
+  const lab=new Int32Array(N).fill(-1), st=new Int32Array(N), R=[];
+  for(let s=0;s<N;s++){
+    const c=f[s]; if(c<0||lab[s]!==-1) continue;
+    const id=R.length; let n=0,sx=0,sy=0,ml=0,ma=0,mb=0,sp=0; st[sp++]=s; lab[s]=id;
+    while(sp){const i=st[--sp],x=i%W,y=(i/W)|0,k=q[i]; n++;sx+=x;sy+=y;ml+=QL[k];ma+=QA[k];mb+=QBb[k];
+      if(x>0&&f[i-1]===c&&lab[i-1]===-1){lab[i-1]=id;st[sp++]=i-1;}
+      if(x<W-1&&f[i+1]===c&&lab[i+1]===-1){lab[i+1]=id;st[sp++]=i+1;}
+      if(y>0&&f[i-W]===c&&lab[i-W]===-1){lab[i-W]=id;st[sp++]=i-W;}
+      if(y<H-1&&f[i+W]===c&&lab[i+W]===-1){lab[i+W]=id;st[sp++]=i+W;}}
+    R.push({area:n,sx,sy,lab:[ml/n,ma/n,mb/n],ci:c,bnd:0});
+  }
+  // merge side walls, shadows and fragments into the piece they belong to
+  const pair=new Map();
+  for(let i=0;i<N;i++){const a=lab[i]; if(a<0) continue; const x=i%W;
+    const chk=j=>{const b=lab[j]; if(b===a) return; R[a].bnd++; if(b<0) return; R[b].bnd++; const k=a<b?a*65536+b:b*65536+a; pair.set(k,(pair.get(k)||0)+1);};
+    if(x<W-1) chk(i+1); if(i<N-W) chk(i+W);}
+  const nbrs=R.map(()=>[]); for(const [k,v] of pair){const a=Math.floor(k/65536),b=k%65536; nbrs[a].push([b,v]); nbrs[b].push([a,v]);}
+  const par=R.map((_,i)=>i), root=i=>{while(par[i]!==i){par[i]=par[par[i]];i=par[i];}return i;};
+  const hue=l=>Math.atan2(l[2],l[1]), chr=l=>Math.hypot(l[1],l[2]);
+  const order=R.map((_,i)=>i).sort((a,b)=>R[a].area-R[b].area);
+  for(const r of order){
+    const me=R[r]; let best=-1,bv=0;
+    for(const [n,v] of nbrs[r]){ if(v>bv){bv=v;best=n;} }
+    if(best<0) continue; const rt=root(best); if(rt===root(r)) continue; const o=R[rt];
+    if(o.area<=me.area*0.6) continue;
+    const share=bv/Math.max(1,me.bnd);
+    const tiny = me.area<opt.minArea*1.5 && share>0.3;
+    let dh=Math.abs(hue(me.lab)-hue(o.lab)); if(dh>Math.PI) dh=2*Math.PI-dh;
+    const thin = me.area/Math.max(1,me.bnd) < 2.2;                       // strip-like: a side wall or shadow
+    const darkerSame = me.lab[0]<o.lab[0]-2 && (dh<0.75 || chr(me.lab)<10 || chr(o.lab)<10) && (share>0.25 || (thin&&share>0.12));
+    if(tiny||darkerSame){ par[root(r)]=rt; o.area+=me.area; o.sx+=me.sx; o.sy+=me.sy; o.bnd+=me.bnd; }
+  }
+  // final pieces
+  const map=new Int32Array(R.length).fill(-1), out=[];
+  for(let i=0;i<R.length;i++){ if(root(i)!==i) continue; const r=R[i]; if(r.area<opt.minArea) continue;
+    map[i]=out.length; out.push({id:out.length,area:r.area,cx:r.sx/r.area,cy:r.sy/r.area,lab:r.lab,color:opt.colors[r.ci]}); }
+  for(let i=0;i<N;i++){const l=lab[i]; lab[i]= l<0?-1:map[root(l)];}
+  // estimate pieces per region from typical size of that colour
+  const all=out.map(c=>c.area).sort((a,b)=>a-b), gm=all.length?all[all.length>>1]:1, byCol={};
+  for(const c of out)(byCol[c.color]=byCol[c.color]||[]).push(c.area);
+  for(const c of out) c.est=1;
+  return {labels:lab,comps:out,W,H,bg};
+}
+function bagIndex(set){const idx={};for(const it of set.items){(idx[it.color]=idx[it.color]||{});idx[it.color][it.bag]=(idx[it.color][it.bag]||0)+(+it.qty||0);}return idx;}
+if(typeof module!=="undefined") module.exports={analyze,bagIndex,PALETTE};
+</script>
+
+<script>
+/* ================= demo set (500 pieces, 5 bags – invented, not a real LEGO set) ================= */
+const DEMO_SET={name:"סט הדגמה – 500 חלקים",items:[
+ {bag:1,color:"red",qty:20,desc:"לבנה 2x4"},{bag:1,color:"lbg",qty:30,desc:"פלטה 1x2"},{bag:1,color:"black",qty:25,desc:"פלטה 2x2"},{bag:1,color:"white",qty:15,desc:"אריח 1x2"},{bag:1,color:"dbg",qty:20,desc:"לבנה 1x2"},
+ {bag:2,color:"lbg",qty:20,desc:"לבנה 1x4"},{bag:2,color:"blue",qty:25,desc:"לבנה 2x2"},{bag:2,color:"yellow",qty:20,desc:"פלטה 1x4"},{bag:2,color:"white",qty:20,desc:"לבנה 2x4"},{bag:2,color:"tan",qty:15,desc:"עגול 1x1"},
+ {bag:3,color:"dbg",qty:25,desc:"פלטה 2x4"},{bag:3,color:"brown",qty:20,desc:"לבנה 1x2"},{bag:3,color:"tan",qty:25,desc:"פלטה 1x3"},{bag:3,color:"orange",qty:15,desc:"אריח 1x1"},{bag:3,color:"azure",qty:15,desc:"עגול 1x1"},
+ {bag:4,color:"black",qty:30,desc:"פלטה 1x1"},{bag:4,color:"red",qty:15,desc:"פלטה 1x2"},{bag:4,color:"dblue",qty:20,desc:"לבנה 2x2"},{bag:4,color:"lbg",qty:20,desc:"פלטה 2x6"},{bag:4,color:"yellow",qty:15,desc:"עגול 1x1"},
+ {bag:5,color:"white",qty:30,desc:"פלטה 2x2"},{bag:5,color:"magenta",qty:20,desc:"פלטה 1x2"},{bag:5,color:"dtan",qty:20,desc:"לבנה 1x2"},{bag:5,color:"orange",qty:20,desc:"פלטה 2x2"}
+]};
+const SET_31058={name:"31058 דינוזאורים אדירים · 187 חלקים",note:"רשימת החלקים אמיתית (Brickset). החלוקה לשקיות זמנית – לא מהחוברת.",items:[
+ {bag:1,color:"green",qty:3,desc:"לבנה 2x2"},{bag:1,color:"green",qty:3,desc:"פלטה 2x4"},{bag:1,color:"green",qty:1,desc:"לבנה מקושתת 4x6"},{bag:1,color:"green",qty:6,desc:"לבנה מקושתת 1x4"},{bag:1,color:"green",qty:4,desc:"פלטת רבע עיגול 3x3"},{bag:1,color:"green",qty:6,desc:"פלטת כנף 2x4"},
+ {bag:1,color:"tan",qty:1,desc:"פלטה 2x6"},{bag:1,color:"tan",qty:1,desc:"פלטה 2x4"},{bag:1,color:"tan",qty:1,desc:"לבנה 2x4"},{bag:1,color:"tan",qty:2,desc:"פלטה 1x4"},{bag:1,color:"tan",qty:2,desc:"גג הפוך 2x2"},{bag:1,color:"tan",qty:2,desc:"גג הפוך 2x3"},
+ {bag:1,color:"dbg",qty:1,desc:"לבנה 2x2 עם כדורים"},{bag:1,color:"dbg",qty:5,desc:"פלטה 1x2 עם כדור"},{bag:1,color:"black",qty:2,desc:"כדור חיכוך 1x1"},{bag:1,color:"red",qty:2,desc:"ציר 1x2"},{bag:1,color:"lbg",qty:1,desc:"לבנה 1x2 עם בליטות צד"},
+ {bag:2,color:"dgreen",qty:2,desc:"לבנה 1x4"},{bag:2,color:"dgreen",qty:8,desc:"פלטה 1x2"},{bag:2,color:"dgreen",qty:1,desc:"פלטה עגולה 2x2"},{bag:2,color:"dgreen",qty:3,desc:"פלטה 1x2 עם מוט"},{bag:2,color:"dgreen",qty:2,desc:"פלטת כנף 2x3"},{bag:2,color:"dgreen",qty:8,desc:"לבנה 2x2 עם שקע"},{bag:2,color:"dgreen",qty:1,desc:"פלטה מקושתת 2x4"},
+ {bag:2,color:"green",qty:2,desc:"פלטה 2x2"},{bag:2,color:"green",qty:4,desc:"פלטה 1x2"},{bag:2,color:"green",qty:2,desc:"פלטה 1x1"},{bag:2,color:"green",qty:2,desc:"לבנה 1x2"},
+ {bag:2,color:"dbg",qty:4,desc:"פלטה 1x2 עם בליטה"},{bag:2,color:"dbg",qty:4,desc:"פלטה 1x2 עם מזלג"},{bag:2,color:"dbg",qty:2,desc:"פלטה 1x2 עם חור"},{bag:2,color:"dbg",qty:2,desc:"חלק 1x2 עם חור וקורה"},
+ {bag:2,color:"lbg",qty:5,desc:"פלטה 1x2 עם שקע כדור"},{bag:2,color:"lbg",qty:2,desc:"פלטה 1x2 עם קליפס"},{bag:2,color:"lbg",qty:2,desc:"מחבר 1x1"},
+ {bag:2,color:"black",qty:2,desc:"שקע כדור 1x2"},{bag:2,color:"black",qty:3,desc:"פלטה 1x2 עם מחזיק"},{bag:2,color:"white",qty:3,desc:"קצה זנב 1x1"},{bag:2,color:"white",qty:1,desc:"להב 1x4"},
+ {bag:3,color:"green",qty:2,desc:"גג 1x2"},{bag:3,color:"green",qty:2,desc:"גג הפוך 2x2"},{bag:3,color:"green",qty:4,desc:"גג 1x1"},{bag:3,color:"green",qty:2,desc:"פלטה מעוגלת 1x2"},{bag:3,color:"green",qty:4,desc:"פלטה מעוגלת 2x2"},
+ {bag:3,color:"tan",qty:2,desc:"פלטה 2x3"},{bag:3,color:"tan",qty:2,desc:"אריח 1x4"},{bag:3,color:"tan",qty:2,desc:"פלטה מעוגלת 1x2"},{bag:3,color:"tan",qty:4,desc:"לבנה פינתית 1x1"},{bag:3,color:"tan",qty:4,desc:"פלטה 1x1 עם מחזיק"},
+ {bag:3,color:"black",qty:2,desc:"עגול 1x1"},{bag:3,color:"black",qty:1,desc:"מוט 1x3"},{bag:3,color:"black",qty:6,desc:"שן 1x1"},{bag:3,color:"black",qty:4,desc:"קרן 1x2"},{bag:3,color:"black",qty:4,desc:"מחזיק מנורה 1x1"},
+ {bag:3,color:"white",qty:7,desc:"פלטה 1x2 עם שיניים"},{bag:3,color:"white",qty:3,desc:"שן 1x1"},{bag:3,color:"white",qty:6,desc:"מחזיק 1x1"},
+ {bag:3,color:"dred",qty:1,desc:"אריח 1x4"},{bag:3,color:"dred",qty:2,desc:"פלטה 1x2"},{bag:3,color:"dtan",qty:3,desc:"לבנה 1x2 עם בליטות צד"},{bag:3,color:"torange",qty:4,desc:"עגול 1x1 כדור עין"},{bag:3,color:"torange",qty:2,desc:"עגול 1x1"},
+ {bag:3,color:"dbg",qty:4,desc:"פלטה 1x1 עם מחזיק"},{bag:3,color:"dbg",qty:2,desc:"מחבר 1x1"}
+]};
+const PRESETS=[SET_31058,null]; // null = DEMO_SET (filled below)
+const BAGCOL=["#4ade80","#60a5fa","#f472b6","#fbbf24","#a78bfa","#2dd4bf","#fb923c","#e879f9","#94a3b8","#f87171"];
+const bagColor=b=>BAGCOL[(b-1)%BAGCOL.length];
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+PRESETS[1]=DEMO_SET;
+let SET=store.get("lego.set3",SET_31058), refs=store.get("lego.refs2",{}), selBag=store.get("lego.bag2",1);
+let opt={thr:18,minArea:22}, result=null, frozen=false, mode=null, stream=null, lastT=0, demoScene=null;
+const $=id=>document.getElementById(id);
+const view=$("view"), vctx=view.getContext("2d"), video=$("video");
+const proc=document.createElement("canvas"), pctx=proc.getContext("2d",{willReadFrequently:true});
+const ovl=document.createElement("canvas"), octx=ovl.getContext("2d");
+const PW=400;
+
+const setColors=()=>[...new Set(SET.items.map(i=>i.color))].filter(c=>PALETTE[c]);
+const bags=()=>[...new Set(SET.items.map(i=>+i.bag))].sort((a,b)=>a-b);
+const total=()=>SET.items.reduce((s,i)=>s+(+i.qty||0),0);
+function toast(t){const e=$("toast");e.textContent=t;e.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display="none",2200);}
+const openM=id=>$(id).classList.add("show"), closeM=id=>$(id).classList.remove("show");
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("show");}));
+
+/* ================= bottom sheet ================= */
+function renderSheet(){
+  $("setTitle").textContent=SET.name;
+  $("setSub").textContent=`${total()} חלקים · ${bags().length} שקיות · ${setColors().length} צבעים`+(SET.note?` · ${SET.note}`:"");
+  $("setLead").textContent=`טעון כרגע: ${SET.name}. אפשר להחליף לסט שלך בכל רגע.`;
+  if(!bags().includes(selBag)) selBag=0;
+  const el=$("bags"); el.innerHTML="";
+  const card=(b)=>{
+    const d=document.createElement("button"); d.className="bag"+(b===selBag?" on":"");
+    const c=b?bagColor(b):"#ffcf33"; d.style.setProperty("--c",c);
+    if(b){
+      const items=SET.items.filter(i=>+i.bag===b), q=items.reduce((s,i)=>s+(+i.qty||0),0);
+      const cols=[...new Set(items.map(i=>i.color))];
+      d.innerHTML=`<div class="n">${q} חלקים</div><div class="big"><i style="background:${c}"></i>שקית ${b}</div>
+        <div class="sw">${cols.map(k=>`<span style="background:${PALETTE[k].hex}"></span>`).join("")}</div>
+        <div class="cnt" data-b="${b}">במסך: <b>–</b></div>`;
+    } else d.innerHTML=`<div class="n">מצב סקירה</div><div class="big">כל השקיות</div><div class="sw"></div><div class="cnt">מספר על כל חלק</div>`;
+    d.onclick=()=>{selBag=b;store.set("lego.bag2",b);renderSheet();if(result){labelComps(result);buildOverlay();}};
+    el.appendChild(d);
+  };
+  card(0); bags().forEach(card);
+  $("legend").innerHTML = selBag
+    ? `<span><i style="background:${bagColor(selBag)}"></i>שייך בוודאות לשקית ${selBag}</span><span><i style="background:#fff"></i>אולי – הצבע מופיע בעוד שקית</span>`
+    : `<span>כל חלק מסומן בצבע ובמספר של השקית שלו · "?" = הצבע מופיע בכמה שקיות</span>`;
+  const on=el.querySelector(".on"); if(on) on.scrollIntoView({inline:"nearest",block:"nearest"});
+  updateStats();
+}
+function updateStats(){
+  if(!result) return;
+  let sure=0,maybe=0; const per={};
+  for(const c of result.comps){ if(c.state==="sure"){sure+=c.est; for(const b of c.bags) per[b]=(per[b]||0)+c.est;} else if(c.state==="maybe") maybe+=c.est; }
+  $("stSure").innerHTML=`<b>${sure}</b>&nbsp;${selBag?"בשקית "+selBag:"משויכים"}`;
+  $("stMaybe").innerHTML=`<b>${maybe}</b>&nbsp;אולי`;
+  const cnt={}; for(const c of result.comps){ if(!c.tiny&&c.bags.length===1) cnt[c.bags[0]]=(cnt[c.bags[0]]||0)+c.est; }
+  document.querySelectorAll(".cnt[data-b]").forEach(e=>{e.innerHTML=`במסך: <b>${cnt[e.dataset.b]||0}</b> בוודאות`;});
+}
+
+/* ================= settings ================= */
+$("menuBtn").onclick=()=>openM("setModalS"); $("closeS").onclick=()=>closeM("setModalS");
+$("thr").oninput=e=>{opt.thr=+e.target.value;$("thrV").textContent=opt.thr;};
+$("minA").oninput=e=>{opt.minArea=+e.target.value;$("minV").textContent=opt.minArea;};
+$("thrV").textContent=opt.thr; $("minV").textContent=opt.minArea;
+$("resetCal").onclick=()=>{refs={};store.set("lego.refs2",refs);toast("כיול הצבעים אופס");};
+$("newPile").onclick=()=>{demoScene=makeDemoScene(SET);closeM("setModalS");if(mode!=="demo"){stopCam();mode="demo";goLive();}};
+$("backIntro").onclick=()=>{stopCam();mode=null;$("stage").classList.remove("live");$("intro").style.display="flex";closeM("setModalS");};
+
+/* ================= camera ================= */
+$("camBtn").onclick=async()=>{
+  $("camErr").textContent="";
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw new Error("nomedia");
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false});
+    video.srcObject=stream; await video.play(); mode="cam"; S.bg=null; goLive();
+  }catch(e){
+    $("camErr").textContent = (location.protocol!=="https:"&&location.hostname!=="localhost")
+      ? "המצלמה עובדת רק כשהאפליקציה פתוחה בכתובת https. בינתיים אפשר לצפות בהדגמה."
+      : "המצלמה חסומה כאן. הדף כנראה פתוח בתוך חלון שלא מאפשר מצלמה. פתח את הקישור ישירות בדפדפן. בינתיים אפשר לצפות בהדגמה.";
+  }
+};
+function stopCam(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} }
+$("demoBtn").onclick=()=>{ if(!demoScene) demoScene=makeDemoScene(SET); mode="demo"; S.bg=null; goLive(); };
+function goLive(){ S.scale=null; $("intro").style.display="none"; $("stage").classList.add("live"); frozen=false; $("freeze").textContent="❚❚"; result=null; if(!goLive.on){goLive.on=1;requestAnimationFrame(loop);} }
+
+/* ================= realistic demo pile ================= */
+function parseShape(desc){
+  const m=/(\d+)\s*[x×]\s*(\d+)/.exec(desc||""); let a=m?+m[1]:1+((Math.random()*2)|0), b=m?+m[2]:2;
+  const kind=/עגול|round/i.test(desc)?"round":/אריח|tile/i.test(desc)?"tile":/פלטה|plate/i.test(desc)?"plate":"brick";
+  return {kind,a,b};
+}
+function shade(hex,f){const n=parseInt(hex.slice(1),16);let r=n>>16&255,g=n>>8&255,b=n&255;
+  const t=f<0?0:255,p=Math.abs(f);r=Math.round(r+(t-r)*p);g=Math.round(g+(t-g)*p);b=Math.round(b+(t-b)*p);return `rgb(${r},${g},${b})`;}
+function rr(x,X,y,w,h,r){x.beginPath();x.roundRect(X,y,w,h,r);}
+function drawPiece(x,p,u){
+  const col=PALETTE[p.color].hex, {kind,a,b}=p.shape, w=a*u, h=b*u;
+  const depth = kind==="brick"||kind==="round" ? u*0.3 : u*0.12;
+  // side wall (seen slightly from the front) + soft contact shadow
+  x.save(); x.translate(p.x,p.y+depth); x.rotate(p.r);
+  x.shadowColor="rgba(0,0,0,.55)"; x.shadowBlur=u*0.5; x.shadowOffsetY=u*0.12;
+  x.fillStyle=shade(col,-0.3);
+  if(kind==="round"){x.beginPath();x.arc(0,0,u*0.48,0,7);x.fill();} else {rr(x,-w/2,-h/2,w,h,u*0.08);x.fill();}
+  x.restore();
+  x.save(); x.translate(p.x,p.y); x.rotate(p.r); if(p.color.startsWith('t')&&p.color!=='tan') x.globalAlpha=0.8;
+  // top face with light gradient
+  const g=x.createLinearGradient(-w/2,-h/2,w/2,h/2); g.addColorStop(0,shade(col,0.16)); g.addColorStop(1,shade(col,-0.1));
+  x.fillStyle=g; x.strokeStyle=shade(col,-0.5); x.lineWidth=Math.max(1,u*0.04);
+  if(kind==="round"){x.beginPath();x.arc(0,0,u*0.48,0,7);x.fill();x.stroke();}
+  else {rr(x,-w/2,-h/2,w,h,u*0.08);x.fill();x.stroke();}
+  if(kind==="tile"){ // glossy tile, no studs
+    const s=x.createLinearGradient(-w/2,-h/2,w/2,h/2); s.addColorStop(0.3,"rgba(255,255,255,0)"); s.addColorStop(0.45,"rgba(255,255,255,.28)"); s.addColorStop(0.6,"rgba(255,255,255,0)");
+    x.fillStyle=s; rr(x,-w/2+1,-h/2+1,w-2,h-2,u*0.07); x.fill();
+  } else {
+    const studs = kind==="round" ? [[0,0]] : (()=>{const s=[];for(let i=0;i<a;i++)for(let j=0;j<b;j++)s.push([-w/2+(i+.5)*u,-h/2+(j+.5)*u]);return s;})();
+    for(const [sx,sy] of studs){
+      x.fillStyle=shade(col,-0.45); x.beginPath(); x.arc(sx+u*0.05,sy+u*0.08,u*0.3,0,7); x.fill();   // stud shadow
+      const sg=x.createRadialGradient(sx-u*0.1,sy-u*0.12,u*0.02,sx,sy,u*0.3); sg.addColorStop(0,shade(col,0.45)); sg.addColorStop(1,shade(col,-0.05));
+      x.fillStyle=sg; x.beginPath(); x.arc(sx,sy,u*0.28,0,7); x.fill();
+      x.strokeStyle=shade(col,-0.35); x.lineWidth=Math.max(0.8,u*0.025); x.stroke();
+    }
+  }
+  x.restore();
+}
+function makeDemoScene(set){
+  const Wd=2100,Hd=1500,u=24, c=document.createElement("canvas"); c.width=Wd; c.height=Hd; const x=c.getContext("2d");
+  // green self-healing cutting mat with grid
+  const mats=["#2f6a52","#2b4f86","#5b4a7a","#8a3b4f","#3d6f7a"], used=[...new Set(set.items.map(i=>i.color))].filter(k=>PALETTE[k]);
+  let mat=mats[0],md=-1; for(const m of mats){const L=hexToLab(m); let d=1e9; for(const k of used){const P=PALETTE[k].lab; d=Math.min(d,Math.hypot((L[0]-P[0])*0.6,L[1]-P[1],L[2]-P[2]));} if(d>md){md=d;mat=m;}}
+  x.fillStyle=mat; x.fillRect(0,0,Wd,Hd);
+  x.strokeStyle="rgba(255,255,255,.07)"; x.lineWidth=2;
+  for(let i=0;i<Wd;i+=u*3){x.beginPath();x.moveTo(i,0);x.lineTo(i,Hd);x.stroke();}
+  for(let j=0;j<Hd;j+=u*3){x.beginPath();x.moveTo(0,j);x.lineTo(Wd,j);x.stroke();}
+  // pieces
+  const ps=[]; for(const it of set.items){ if(!PALETTE[it.color]) continue; const sh=parseShape(it.desc); for(let k=0;k<(+it.qty||0);k++) ps.push({color:it.color,shape:sh,bag:+it.bag}); }
+  ps.sort(()=>Math.random()-0.5);
+  const dens=Math.max(0.55,Math.sqrt(ps.length/500)), cx=Wd/2,cy=Hd/2,rx=Wd*0.37*dens,ry=Hd*0.36*dens;
+  for(const p of ps){ let px,py; do{px=Math.random()*2-1;py=Math.random()*2-1;}while(px*px+py*py>1);
+    p.x=cx+px*rx; p.y=cy+py*ry; p.r=Math.random()*Math.PI; }
+  ps.sort((a,b)=>a.y-b.y);   // draw back-to-front
+  for(const p of ps) drawPiece(x,p,u);
+  // camera feel: light falloff + sensor noise
+  const v=x.createRadialGradient(Wd*0.45,Hd*0.4,Hd*0.2,Wd/2,Hd/2,Wd*0.75); v.addColorStop(0,"rgba(255,248,235,.06)"); v.addColorStop(1,"rgba(0,0,0,.38)");
+  x.fillStyle=v; x.fillRect(0,0,Wd,Hd);
+  const im=x.getImageData(0,0,Wd,Hd), d=im.data; for(let i=0;i<d.length;i+=4){const n=(Math.random()-0.5)*10;d[i]+=n;d[i+1]+=n;d[i+2]+=n;} x.putImageData(im,0,0);
+  c.count=ps.length; c.ps=ps; c.dens=dens; return c;
+}
+
+/* ================= main loop ================= */
+let srcW=960,srcH=640,crop=null;
+function source(t){
+  if(mode==="cam"){srcW=video.videoWidth||960;srcH=video.videoHeight||640;return video;}
+  const s=t/1000, vw=620+Math.sin(s*0.21)*50, vh=vw*(view.clientHeight/Math.max(1,view.clientWidth)||0.75);
+  const ox=(demoScene.width-vw)/2+Math.sin(s*0.33)*demoScene.width*0.22*(demoScene.dens||1)+Math.sin(s*1.7)*6;
+  const oy=(demoScene.height-vh)/2+Math.cos(s*0.26)*demoScene.height*0.2*(demoScene.dens||1)+Math.cos(s*1.3)*5;
+  crop=[ox,oy,vw,vh]; srcW=vw; srcH=vh; return demoScene;
+}
+function blit(ctx,src,w,h){ if(mode==="demo") ctx.drawImage(src,crop[0],crop[1],crop[2],crop[3],0,0,w,h); else ctx.drawImage(src,0,0,w,h); }
+function loop(t){
+  requestAnimationFrame(loop);
+  if(!mode||frozen) return;
+  if(mode==="cam"&&!video.videoWidth) return;
+  const src=source(t);
+  // canvas matches the stage aspect; source is cropped to fill (like object-fit:cover)
+  const cw=Math.round(view.clientWidth*Math.min(2,devicePixelRatio||1)), ch=Math.round(view.clientHeight*Math.min(2,devicePixelRatio||1));
+  if(view.width!==cw||view.height!==ch){view.width=cw;view.height=ch;}
+  if(mode==="cam"){ // cover-crop the video to the stage aspect
+    const ar=cw/ch, var_=srcW/srcH; let sw=srcW,sh=srcH; if(var_>ar) sw=srcH*ar; else sh=srcW/ar;
+    crop=[(srcW-sw)/2,(srcH-sh)/2,sw,sh];
+  }
+  vctx.drawImage(src,crop[0],crop[1],crop[2],crop[3],0,0,cw,ch);
+  if(t-lastT>110){
+    const ph=Math.round(PW*ch/cw); proc.width=PW; proc.height=ph;
+    pctx.drawImage(src,crop[0],crop[1],crop[2],crop[3],0,0,PW,ph);
+    const r=analyze(pctx.getImageData(0,0,PW,ph).data,PW,ph,{thr:opt.thr,minArea:opt.minArea,colors:setColors(),refs});
+    labelComps(r); result=r; buildOverlay(); updateStats(); lastT=t;
+  }
+  drawOverlay();
+}
+const studsOf=it=>{const sh=parseShape(it.desc); return sh.kind==="round"?0.8:sh.a*sh.b;};
+/* colour narrows the candidates; measured size narrows them further.
+   Scale (pixels per stud) is learned live from colours that exist in only one part shape in the set. */
+function labelComps(r){
+  const byCol={}; for(const it of SET.items){ if(!PALETTE[it.color]) continue; (byCol[it.color]=byCol[it.color]||[]).push({bag:+it.bag,studs:studsOf(it)}); }
+  const ratios=[];
+  for(const c of r.comps){ const its=byCol[c.color]||[]; const st=new Set(its.map(i=>i.studs)); if(st.size===1&&its.length) ratios.push(c.area/its[0].studs); }
+  ratios.sort((a,b)=>a-b);
+  let scale = ratios.length>=3 ? ratios[Math.floor(ratios.length*0.85)] : null;
+  if(scale) r.scale = S.scale = S.scale? S.scale*0.7+scale*0.3 : scale; else scale=S.scale||null; r.scale=scale;
+  for(const c of r.comps){
+    const its=byCol[c.color]||[]; let cand=its;
+    c.est=1;
+    if(scale&&its.length){
+      const studs=c.area/scale;
+      const fit=its.filter(i=>Math.abs(Math.log(studs/i.studs))<Math.log(1.55));
+      const minS=Math.min(...its.map(i=>i.studs)), maxS=Math.max(...its.map(i=>i.studs));
+      if(studs>maxS*1.8){ c.est=Math.max(2,Math.round(studs/maxS)); }      // several pieces touching
+      else if(fit.length) cand=fit;
+      else if(studs<minS) cand=its.filter(i=>i.studs===minS);               // partly hidden piece
+      c.studs=studs;
+    }
+    c.bags=[...new Set(cand.map(i=>i.bag))].sort((a,b)=>a-b);
+    c.tiny = !!scale && c.area < scale*0.35;
+    c.byColorOnly=new Set(its.map(i=>i.bag)).size===1;
+    if(!selBag) c.state=c.bags.length===1?"sure":"maybe";
+    else c.state=!c.bags.includes(selBag)?"no":(c.bags.length===1?"sure":"maybe");
+    if(c.tiny) c.state="no";
+  }
+}
+function buildOverlay(){
+  const r=result,W=r.W,H=r.H; ovl.width=W; ovl.height=H;
+  const im=octx.createImageData(W,H), d=im.data, L=r.labels, cs=r.comps;
+  const rgb=h=>{const n=parseInt(h.slice(1),16);return [n>>16&255,n>>8&255,n&255];};
+  const colOf=cs.map(c=> c.state==="no"?null : c.state==="maybe"?[255,255,255] : rgb(selBag?bagColor(selBag):bagColor(c.bags[0])));
+  for(let i=0,p=0;i<L.length;i++,p+=4){
+    const l=L[i];
+    if(l<0||!colOf[l]){ if(selBag){d[p+3]= l<0?120:175;} continue; }   // dim background / other bags
+    const x=i%W; const edge = x===0||x===W-1||i<W||i>=L.length-W||L[i-1]!==l||L[i+1]!==l||L[i-W]!==l||L[i+W]!==l;
+    if(edge&&selBag){const c=colOf[l];d[p]=c[0];d[p+1]=c[1];d[p+2]=c[2];d[p+3]=255;}
+    else if(cs[l].state==="sure"){const c=colOf[l];d[p]=c[0];d[p+1]=c[1];d[p+2]=c[2];d[p+3]=selBag?38:0;}
+  }
+  octx.putImageData(im,0,0);
+}
+function drawOverlay(){
+  if(!result) return;
+  const sx=view.width/result.W, sy=view.height/result.H;
+  vctx.save(); vctx.imageSmoothingEnabled=true; vctx.shadowColor="rgba(0,0,0,.0)";
+  vctx.drawImage(ovl,0,0,view.width,view.height);
+  const base=Math.max(11,view.width/50);
+  vctx.textAlign="center"; vctx.textBaseline="middle";
+  for(const c of result.comps){
+    if(c.state==="no") continue;
+    if(!selBag && result.scale && c.area<result.scale*0.7) continue;
+    const size=Math.min(base*1.25,Math.max(base*0.75,Math.sqrt(c.area)*sx*0.42));
+    const x=c.cx*sx, y=c.cy*sy, col=c.state==="maybe"?"#ffffff":(selBag?bagColor(selBag):bagColor(c.bags[0]));
+    const txt=(c.state==="maybe"?"?":String(selBag||c.bags[0]))+(c.est>1?` ×${c.est}`:"");
+    vctx.font=`800 ${Math.round(size*0.9)}px Heebo,system-ui`;
+    const tw=Math.max(size*1.5,vctx.measureText(txt).width+size*0.8);
+    vctx.shadowColor="rgba(0,0,0,.5)"; vctx.shadowBlur=size*0.5;
+    vctx.fillStyle=col; vctx.beginPath(); vctx.roundRect(x-tw/2,y-size*0.75,tw,size*1.5,size*0.75); vctx.fill();
+    vctx.shadowBlur=0; vctx.fillStyle="#111"; vctx.fillText(txt,x,y+size*0.05);
+  }
+  vctx.restore();
+}
+$("freeze").onclick=()=>{frozen=!frozen;$("freeze").textContent=frozen?"▶":"❚❚";};
+
+/* ================= tap → fix colour ================= */
+let tapped=null;
+view.addEventListener("click",e=>{
+  if(!result) return; const rc=view.getBoundingClientRect();
+  const x=Math.floor((e.clientX-rc.left)/rc.width*result.W), y=Math.floor((e.clientY-rc.top)/rc.height*result.H);
+  let id=-1;
+  for(let r=0;r<=8&&id<0;r++) for(let dy=-r;dy<=r&&id<0;dy++) for(let dx=-r;dx<=r&&id<0;dx++){
+    const xx=x+dx,yy=y+dy; if(xx>=0&&yy>=0&&xx<result.W&&yy<result.H){const l=result.labels[yy*result.W+xx]; if(l>=0) id=l;}}
+  if(id<0) return;
+  frozen=true; $("freeze").textContent="▶";
+  tapped=result.comps[id]; const c=tapped, idx=bagIndex(SET)[c.color]||{};
+  $("pieceTitle").innerHTML=`<span class="swatch" style="display:inline-block;vertical-align:-3px;background:${PALETTE[c.color].hex}"></span> זוהה: ${PALETTE[c.color].he}${c.est>1?` · כנראה ${c.est} חלקים צמודים`:""}`;
+  $("pieceInfo").textContent = Object.keys(idx).length ? "הצבע הזה בסט: "+Object.entries(idx).map(([b,q])=>`שקית ${b} (${q})`).join(" · ") : "הצבע הזה לא נמצא בסט.";
+  const el=$("pieceColors"); el.innerHTML="";
+  for(const id2 of setColors()){
+    const b=document.createElement("button"); if(id2===c.color) b.className="cur";
+    b.innerHTML=`<span class="swatch" style="background:${PALETTE[id2].hex}"></span>${PALETTE[id2].he}`;
+    b.onclick=()=>{ (refs[id2]=refs[id2]||[]).push(c.lab.map(v=>Math.round(v*10)/10)); if(refs[id2].length>6) refs[id2].shift();
+      store.set("lego.refs2",refs); closeM("pieceModal"); frozen=false; $("freeze").textContent="❚❚"; toast(`נלמד: ${PALETTE[id2].he}`); };
+    el.appendChild(b);
+  }
+  openM("pieceModal");
+});
+$("pieceClose").onclick=()=>closeM("pieceModal");
+
+/* ================= set editor ================= */
+function rowEl(it){
+  const d=document.createElement("div"); d.className="row";
+  const opts=Object.entries(PALETTE).map(([k,v])=>`<option value="${k}" ${k===it.color?"selected":""}>${v.he}</option>`).join("");
+  d.innerHTML=`<input type="number" min="1" class="b" value="${it.bag}"><select class="c">${opts}</select><input type="number" min="1" class="q" value="${it.qty}"><input class="d" value="${(it.desc||"").replace(/"/g,"&quot;")}"><button title="מחק" style="color:#ff8f8f">✕</button>`;
+  d.querySelector("button").onclick=()=>d.remove(); return d;
+}
+function openEditor(){ $("setName").value=SET.name; const r=$("rows"); r.innerHTML=""; SET.items.forEach(it=>r.appendChild(rowEl(it))); $("json").value=JSON.stringify(SET); openM("setModal"); }
+function readEditor(){ return {name:$("setName").value||"הסט שלי", items:[...document.querySelectorAll("#rows .row")].map(d=>({
+  bag:+d.querySelector(".b").value||1,color:d.querySelector(".c").value,qty:+d.querySelector(".q").value||1,desc:d.querySelector(".d").value}))}; }
+function applySet(s){ SET=s; store.set("lego.set3",SET); demoScene=null; if(mode==="demo") demoScene=makeDemoScene(SET); renderSheet(); }
+$("editBtn").onclick=openEditor;
+$("swapBtn").onclick=()=>{const next=SET.name===SET_31058.name?DEMO_SET:SET_31058; applySet(JSON.parse(JSON.stringify(next))); toast("נטען: "+next.name);};
+$("addRow").onclick=()=>$("rows").appendChild(rowEl({bag:bags().slice(-1)[0]||1,color:"red",qty:1,desc:""}));
+$("saveSet").onclick=()=>{const s=readEditor(); if(!s.items.length){toast("צריך לפחות שורה אחת");return;} applySet(s); closeM("setModal"); toast("הסט נשמר");};
+$("cancelSet").onclick=()=>closeM("setModal");
+$("copyJson").onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify(readEditor()));toast("הועתק");}catch(e){$("json").select();toast("סמן והעתק ידנית");}};
+$("loadJson").onclick=()=>{try{const s=JSON.parse($("json").value); if(!s.items) throw 0; s.items=s.items.filter(i=>PALETTE[i.color]); applySet(s); openEditor(); toast("נטען");}catch(e){toast("הטקסט לא תקין");}};
+$("demoSet").onclick=()=>{applySet(JSON.parse(JSON.stringify(DEMO_SET)));openEditor();};
+$("realSet").onclick=()=>{applySet(JSON.parse(JSON.stringify(SET_31058)));openEditor();};
+
+/* ================= intro art ================= */
+(function(){
+  const c=$("introArt"), x=c.getContext("2d"), dpr=Math.min(2,devicePixelRatio||1);
+  const draw=()=>{ c.width=c.clientWidth*dpr; c.height=c.clientHeight*dpr; const u=Math.min(c.width,c.height)/7;
+    const cols=["red","yellow","blue","white","orange","lbg","tan","azure","black","magenta"];
+    const shapes=[{kind:"brick",a:2,b:4},{kind:"brick",a:2,b:2},{kind:"plate",a:1,b:4},{kind:"round",a:1,b:1},{kind:"tile",a:1,b:2},{kind:"brick",a:1,b:2}];
+    let seed=7; const rnd=()=>((seed=seed*16807%2147483647)/2147483647);
+    const ps=[]; for(let i=0;i<26;i++) ps.push({color:cols[i%cols.length],shape:shapes[i%shapes.length],x:rnd()*c.width,y:rnd()*c.height*0.9,r:rnd()*3});
+    ps.sort((a,b)=>a.y-b.y); x.clearRect(0,0,c.width,c.height); x.globalAlpha=.85; ps.forEach(p=>drawPiece(x,p,u*0.55));
+    const fade=x.createLinearGradient(0,c.height*0.4,0,c.height); fade.addColorStop(0,"rgba(11,13,16,0)"); fade.addColorStop(1,"rgba(11,13,16,1)");
+    x.globalAlpha=1; x.fillStyle=fade; x.fillRect(0,0,c.width,c.height); };
+  draw(); addEventListener("resize",draw);
+})();
+
+renderSheet();
+</script>
+</body>
+</html>

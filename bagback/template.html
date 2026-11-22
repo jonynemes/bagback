@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Backpack – prototype</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-32.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#ff9a1f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Backpack">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#16181d;--mut:#6b7280;--line:#e7e5e0;--brand:#ffbf1f;--brand2:#ff7a1a;--ok:#16a34a;--blue:#2563eb;--soft:#fff6dd}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Plus Jakarta Sans",system-ui,-apple-system,Arial,sans-serif}
+body{min-height:100dvh;display:flex;flex-direction:column;max-width:560px;margin:0 auto;position:relative}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input,select{font:inherit}
+/* header */
+header{position:sticky;top:0;z-index:5;background:#f6f5f2e8;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:12px 16px 10px;border-bottom:1px solid var(--line)}
+.hrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:19px;letter-spacing:-.3px}
+.logo i{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--brand2));display:grid;place-items:center;box-shadow:0 3px 10px #ff7a1a40}
+.logo i::before{content:"";width:12px;height:12px;border-radius:50%;background:#0002;box-shadow:inset 0 2px 0 #fff8}
+.seg{display:flex;background:#ebe8e2;border-radius:999px;padding:3px}
+.seg button{padding:7px 14px;border-radius:999px;font-weight:600;font-size:13px;color:var(--mut)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px #0002}
+.persona{font-size:12px;color:var(--mut);margin-top:6px;display:flex;justify-content:space-between}
+.persona a{color:var(--mut);text-decoration:underline;cursor:pointer}
+/* content */
+main{flex:1;padding:14px 16px 96px}
+.view{display:none}.view.on{display:block;animation:in .2s}
+@keyframes in{from{opacity:0;transform:translateY(6px)}}
+h2{font-size:22px;margin:4px 0 4px;letter-spacing:-.4px}
+.sub{color:var(--mut);font-size:14px;margin:0 0 14px;line-height:1.45}
+.guide{background:var(--soft);border:1px solid #ffe08a;border-radius:14px;padding:10px 12px;font-size:13px;line-height:1.45;margin-bottom:14px;display:flex;gap:8px}
+.guide b{white-space:nowrap}
+.thumb{cursor:zoom-in}
+.lb{position:fixed;inset:0;z-index:100;background:rgba(20,16,10,.82);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px)}
+.lb.on{display:flex}.lb img{width:min(88vw,520px);max-width:100%;max-height:70vh;object-fit:contain;background:#fff;border-radius:18px;padding:12px;box-shadow:0 20px 60px #0006}
+.lb .cap{color:#fff;margin-top:14px;text-align:center;font-weight:700;font-size:17px}.lb .cap small{display:block;font-weight:500;opacity:.75;font-size:13px;margin-top:3px}
+.lb .x{position:absolute;top:18px;right:18px;width:42px;height:42px;border-radius:50%;border:0;background:#fff;font-size:22px;line-height:42px;cursor:pointer}
+.bkrow{display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid #f1ede6;font-size:13px}.bkrow:last-child{border-bottom:0}
+.bkrow img{width:46px;height:46px;object-fit:contain;border-radius:8px;background:#f6f3ee;flex:0 0 auto}.bkrow .b{margin-left:auto;font-weight:800;white-space:nowrap}
+.bkrow .crop{border:2px solid #5b3df5}
+.acwrap{position:relative}
+.ac{display:none;position:absolute;left:0;right:0;top:50px;z-index:30;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 30px #0002;max-height:60vh;overflow:auto}
+.ac.on{display:block}.ac .it{display:flex;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid #f1ede6;cursor:pointer}
+.ac .it:last-child{border-bottom:0}.ac .it:active,.ac .it.hl{background:#fff4e6}
+.ac img{width:44px;height:44px;object-fit:contain;border-radius:8px;background:#fff;flex:0 0 auto}
+.ac .n{font-weight:700;font-size:14px}.ac .m{font-size:12px;color:var(--mut)}.ac .tag{margin-left:auto;font-size:11px;font-weight:700;color:#e8780c;white-space:nowrap}
+.ac .hint{padding:10px 12px;font-size:12px;color:var(--mut)}.ac .cnt{position:sticky;top:0;background:#faf8f4;border-bottom:1px solid #f1ede6;z-index:1}
+.ac b.hl{background:#ffe2b8;color:#000;border-radius:4px;padding:0 1px}.ac .num{font-variant-numeric:tabular-nums;color:#444}
+.search{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:#fff;margin-bottom:12px;font-size:15px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:12px;margin-bottom:12px;box-shadow:0 1px 2px #0000000a}
+.setrow{display:flex;gap:12px;align-items:center}
+.thumb{width:72px;height:72px;border-radius:14px;flex:0 0 auto;background:#fff;object-fit:contain;padding:4px;box-sizing:border-box;border:1px solid #eee8df}
+.meta{flex:1;min-width:0}
+.meta .t{font-weight:700;font-size:15px;line-height:1.25}
+.meta .s{font-size:12px;color:var(--mut);margin-top:2px}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:4px 9px;border-radius:999px;background:#eef6ee;color:#166534;margin-top:6px}
+.pill.gray{background:#f1f1ef;color:var(--mut)}
+.pill.blue{background:#eaf1ff;color:#1d4ed8}
+.pill.amber{background:#fff4d6;color:#92400e}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;border-radius:12px;font-weight:700;font-size:14px}
+.btn.pri{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#2a1700;box-shadow:0 6px 16px #ff7a1a33}
+.btn.dark{background:var(--ink);color:#fff}
+.btn.ghost{background:#f1efea}
+.btn.ok{background:var(--ok);color:#fff}
+.btn.block{width:100%}
+.btn:disabled{opacity:.45;cursor:default}
+.actions{display:flex;gap:8px;margin-top:12px}
+.actions .btn{flex:1}
+.price{font-weight:800;font-size:16px}
+.kv{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;color:var(--mut)}
+.kv b{color:var(--ink)}
+.hr{height:1px;background:var(--line);margin:10px 0}
+/* timeline */
+.tl{margin:12px 0 2px;padding:0;list-style:none}
+.tl li{position:relative;padding:0 0 12px 26px;font-size:13px;color:var(--mut)}
+.tl li::before{content:"";position:absolute;left:5px;top:3px;width:10px;height:10px;border-radius:50%;background:#d6d3cd}
+.tl li::after{content:"";position:absolute;left:9.5px;top:15px;bottom:-1px;width:1px;background:#d6d3cd}
+.tl li:last-child::after{display:none}
+.tl li.done{color:var(--ink)} .tl li.done::before{background:var(--ok)}
+.tl li.now{color:var(--ink);font-weight:700} .tl li.now::before{background:var(--brand2);box-shadow:0 0 0 4px #ff7a1a2a}
+.empty{text-align:center;color:var(--mut);padding:30px 10px;font-size:14px}
+/* nav */
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:560px;background:#fffffff2;backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;padding:6px 6px calc(8px + env(safe-area-inset-bottom));z-index:6}
+nav.hosted{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+main.hosted{padding-bottom:170px}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--mut);padding:6px 0;position:relative}
+nav button .ic{font-size:20px;line-height:1}
+nav button.on{color:var(--ink)}
+nav .badge{position:absolute;top:2px;left:calc(50% + 6px);background:#ef4444;color:#fff;font-size:10px;font-weight:800;border-radius:999px;padding:1px 6px}
+/* modal */
+.modal{position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;justify-content:center;z-index:20}
+.modal.show{display:flex}
+.sheet{background:#fff;width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(30px)}}
+.sheet h3{margin:0 0 4px;font-size:18px}
+input[type=range]{width:100%;accent-color:var(--brand2)}
+#toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;display:none;z-index:30;box-shadow:0 8px 24px #0003;max-width:92%}
+/* sort (scanner) */
+.stage{position:relative;height:56vh;min-height:320px;border-radius:20px;overflow:hidden;background:#0b0d10;margin:0 -4px}
+#view{position:absolute;inset:0;width:100%;height:100%}
+.stage .start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center;color:#cfd5de;background:radial-gradient(80% 60% at 70% 10%,#ff7a1a33,#0000),#0b0d10}
+.stage .start p{font-size:13px;margin:0;max-width:300px;line-height:1.5}
+.stage .start .err{color:#fca5a5}
+.reticle{position:absolute;inset:14% 8%;pointer-events:none;display:none}
+.reticle span{position:absolute;width:24px;height:24px;border:3px solid #fff;border-radius:3px}
+.reticle span:nth-child(1){top:0;left:0;border-right:0;border-bottom:0}.reticle span:nth-child(2){top:0;right:0;border-left:0;border-bottom:0}
+.reticle span:nth-child(3){bottom:0;left:0;border-right:0;border-top:0}.reticle span:nth-child(4){bottom:0;right:0;border-left:0;border-top:0}
+.live .reticle{display:block}
+.shud{position:absolute;bottom:10px;left:10px;right:10px;display:none;justify-content:space-between;align-items:center}
+.live .shud{display:flex}
+.chip{background:#ffffff22;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid #ffffff2a;color:#fff;padding:7px 12px;border-radius:999px;font-size:13px;font-weight:600}
+.setswitch{display:flex;gap:8px;margin-top:12px}
+.setswitch select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;font:inherit;font-weight:700;font-size:14px}
+.setswitch button.on{background:var(--ink);color:#fff}
+.bagchips{display:flex;gap:8px;overflow-x:auto;padding:12px 2px 4px;scrollbar-width:none}
+.bagchips::-webkit-scrollbar{display:none}
+.bagchip{flex:0 0 auto;border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:8px 12px;text-align:left;min-width:96px}
+.bagchip .n{font-weight:800;font-size:15px;display:flex;align-items:center;gap:6px}
+.bagchip .n i{width:10px;height:10px;border-radius:50%}
+.bagchip .c{font-size:11px;color:var(--mut)}
+.bagchip.on{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 25%,transparent)}
+.bagchip.done .n::after{content:"✓";color:var(--ok);margin-left:auto}
+.parts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.parts span{font-size:12px;background:#f4f2ee;border-radius:8px;padding:4px 8px;display:flex;gap:6px;align-items:center}
+.sw{width:12px;height:12px;border-radius:3px;border:1px solid #0002;display:inline-block}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--mut);margin:8px 2px 0;flex-wrap:wrap}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
+.foot{font-size:11px;color:var(--mut);text-align:center;margin-top:18px;line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <div class="logo"><i></i>Backpack</div>
+    <div class="seg"><button id="roleBuyer" class="on">Buyer</button><button id="roleSeller">Seller</button></div>
+  </div>
+  <div class="persona"><span id="persona"></span><a id="resetDemo">Reset demo</a></div>
+</header>
+
+<main>
+  <!-- BUYER: discover -->
+  <section class="view" data-view="discover">
+    <h2>Find a set, complete.</h2>
+    <p class="sub">Built sets from owners near you, taken apart and sorted back into their numbered bags, checked with Backpack before they ship.</p>
+    <div class="guide" id="g-discover"></div>
+    <div class="acwrap"><input class="search" id="search" placeholder="Type a set number or name" autocomplete="off" inputmode="search"><div class="ac" id="ac"></div></div>
+    <div id="catalog"></div>
+  </section>
+
+  <!-- BUYER: my orders -->
+  <section class="view" data-view="orders">
+    <h2>My wishlist & orders</h2>
+    <p class="sub">We match you with the nearest owner who has the set built.</p>
+    <div class="guide" id="g-orders"></div>
+    <div id="orderList"></div>
+  </section>
+
+  <!-- SELLER: requests -->
+  <section class="view" data-view="requests">
+    <h2>Requests</h2>
+    <p class="sub">People nearby who want a set from your shelf.</p>
+    <div class="guide" id="g-requests"></div>
+    <div id="reqList"></div>
+  </section>
+
+  <!-- SELLER: shelf -->
+  <section class="view" data-view="shelf">
+    <h2>My shelf</h2>
+    <p class="sub">Sets you have built. When someone wants one, you'll get a request.</p>
+    <div id="shelfList"></div>
+    <button class="btn ghost block" id="addShelf">+ Add a built set</button>
+  </section>
+
+  <!-- SELLER: sort -->
+  <section class="view" data-view="sort">
+    <h2 id="sortTitle">Sort</h2>
+    <p class="sub" id="sortSub"></p>
+    <div class="stage" id="stage">
+      <canvas id="view" width="900" height="600"></canvas>
+      <div class="reticle"><span></span><span></span><span></span><span></span></div>
+      <div class="shud"><span class="chip" id="stSure"></span><button class="chip" id="freeze">❚❚</button></div>
+      <div class="start" id="start">
+        <button class="btn pri" id="camBtn">Start camera</button>
+        <button class="btn ghost" id="demoBtn" style="background:#ffffff1a;color:#fff">Try the demo pile</button>
+        <p>Spread the pieces in one layer on a plain mat in a colour the set doesn't use. Hold the phone about 30–40 cm above.</p>
+        <p class="err" id="camErr"></p>
+      </div>
+    </div>
+    <button class="btn block" id="bkBtn" style="display:none;margin-top:10px;background:#5b3df5;color:#fff">🔍 Identify unclear pieces · Brickognize AI</button>
+    <div class="card" id="bkRes" style="display:none;margin-top:10px"></div>
+    <div class="setswitch" id="setswitch"></div>
+    <div class="bagchips" id="bagchips"></div>
+    <div class="legend" id="legend"></div>
+    <div class="card" style="margin-top:12px" id="bagPanel"></div>
+    <button class="btn ok block" id="finishSort" style="margin-top:4px">Verify complete &amp; finish</button>
+  </section>
+
+  <p class="foot">Prototype · demo users, prices and orders are made up · no real payments.<br>Backpack is not affiliated with the LEGO Group.</p>
+</main>
+
+<nav id="nav"></nav>
+
+<div class="modal" id="wishModal"><div class="sheet">
+  <h3 id="wTitle"></h3>
+  <p class="sub" id="wSub"></p>
+  <div class="kv"><span>Your max price</span><b id="wPriceV"></b></div>
+  <input type="range" id="wPrice">
+  <div class="kv"><span>Condition</span><b>Complete · sorted into bags · verified</b></div>
+  <div class="kv"><span>Ship to</span><b id="wShip"></b></div>
+  <div class="actions"><button class="btn ghost" id="wCancel">Cancel</button><button class="btn pri" id="wGo">Find me one</button></div>
+</div></div>
+
+<div class="modal" id="shelfModal"><div class="sheet">
+  <h3>Add a built set</h3>
+  <p class="sub">Pick a set you have on your shelf.</p>
+  <div id="shelfPick"></div>
+  <div class="actions"><button class="btn ghost" id="sCancel">Close</button></div>
+</div></div>
+
+<div id="toast"></div>
+<video id="video" playsinline muted autoplay style="display:none"></video>
+
+/*CORE*/
+
+<script>
+/* ===== colour names in English ===== */
+const EN={white:"White",black:"Black",red:"Red",blue:"Blue",yellow:"Yellow",green:"Green",bgreen:"Bright green",lime:"Lime",orange:"Orange",lbg:"Light grey",dbg:"Dark grey",brown:"Brown",tan:"Tan",dtan:"Dark tan",dred:"Dark red",dblue:"Dark blue",azure:"Azure",mblue:"Medium blue",dgreen:"Dark green",sgreen:"Sand green",pink:"Pink",magenta:"Magenta",nougat:"Nougat",gold:"Gold",purple:"Purple",dorange:"Dark orange",torange:"Trans orange"};
+
+/* ===== reused from the sorter ===== */
+/*SET31058*/
+/*REALSETS*/
+const SET_TEST={name:"Backpack Test Set",note:"Built from your own pieces: 3 piles = 3 bags.",
+ refs:{blue:[[50,6,-52],[45,14,-58],[50,1,-44],[31,10,-38],[47,5,-40]],dblue:[[32,4,-26]]},
+ items:[
+ {bag:1,color:"white",qty:3,desc:"Brick 1x8"},{bag:1,color:"white",qty:1,desc:"Brick 2x4"},
+ {bag:1,color:"yellow",qty:1,desc:"Brick 1x8"},{bag:1,color:"yellow",qty:1,desc:"Brick 2x6"},{bag:1,color:"yellow",qty:1,desc:"Brick 2x4"},
+ {bag:1,color:"black",qty:1,desc:"Plate 2x8"},{bag:1,color:"black",qty:1,desc:"Brick 2x3"},{bag:1,color:"black",qty:1,desc:"Plate 4x10"},{bag:1,color:"black",qty:1,desc:"Technic beam 1x8"},{bag:1,color:"black",qty:1,desc:"Wheel 3x3"},{bag:1,color:"black",qty:1,desc:"Wheel axle 2x4"},{bag:1,color:"black",qty:1,desc:"Brick 1x2"},
+ {bag:1,color:"green",qty:1,desc:"Brick 1x4"},{bag:1,color:"green",qty:1,desc:"Brick 2x6"},{bag:1,color:"green",qty:1,desc:"Plate 2x3"},
+ {bag:1,color:"red",qty:2,desc:"Plate 1x2"},{bag:1,color:"red",qty:1,desc:"Hinge 1x2"},{bag:1,color:"red",qty:2,desc:"Brick 1x8"},{bag:1,color:"red",qty:1,desc:"Brick 1x6"},{bag:1,color:"red",qty:1,desc:"Brick 2x4"},{bag:1,color:"red",qty:1,desc:"Car base 4x8"},
+ {bag:1,color:"pink",qty:1,desc:"Container 2x6"},
+ {bag:1,color:"blue",qty:3,desc:"Brick 2x4"},{bag:1,color:"azure",qty:1,desc:"Brick 1x2"},{bag:1,color:"dblue",qty:1,desc:"Slope 3x4"},
+ {bag:1,color:"lbg",qty:1,desc:"Plate 2x8"},{bag:1,color:"lbg",qty:1,desc:"Brick 1x3"},
+ {bag:2,color:"red",qty:1,desc:"Frame 3x4"},{bag:2,color:"red",qty:1,desc:"Car base 4x8"},{bag:2,color:"red",qty:1,desc:"Arch 1x6"},{bag:2,color:"red",qty:1,desc:"Brick 1x8"},{bag:2,color:"red",qty:2,desc:"Minifig part 1x2"},
+ {bag:2,color:"yellow",qty:1,desc:"Plate 2x12"},{bag:2,color:"yellow",qty:1,desc:"Brick 1x1"},{bag:2,color:"yellow",qty:1,desc:"Brick 2x4"},{bag:2,color:"yellow",qty:1,desc:"Brick 1x6"},
+ {bag:2,color:"black",qty:1,desc:"Slope 3x4 (flames)"},{bag:2,color:"black",qty:1,desc:"Plate 1x6"},{bag:2,color:"black",qty:1,desc:"Plate 2x8"},{bag:2,color:"black",qty:1,desc:"Brick 1x1"},{bag:2,color:"black",qty:1,desc:"Window 1x2"},{bag:2,color:"black",qty:1,desc:"Clip 1x2"},{bag:2,color:"black",qty:1,desc:"Chassis 4x8"},
+ {bag:2,color:"blue",qty:1,desc:"Brick 2x3"},{bag:2,color:"blue",qty:3,desc:"Brick 2x4"},
+ {bag:2,color:"orange",qty:2,desc:"Plate 1x1"},{bag:2,color:"tan",qty:1,desc:"Plate 4x8"},
+ {bag:2,color:"lbg",qty:1,desc:"Plate 1x8"},{bag:2,color:"lbg",qty:1,desc:"Axle part 2x4"},
+ {bag:2,color:"green",qty:1,desc:"Brick 2x2"},{bag:2,color:"green",qty:1,desc:"Plate 2x8"},{bag:2,color:"green",qty:1,desc:"Bracket 1x4"},{bag:2,color:"tan",qty:2,desc:"Bracket 1x2"},
+ {bag:2,color:"pink",qty:1,desc:"Brick 1x2"},
+ {bag:2,color:"white",qty:1,desc:"Container 2x2"},{bag:2,color:"white",qty:1,desc:"Plate 1x1"},{bag:2,color:"white",qty:1,desc:"Brick 2x2"},
+ {bag:3,color:"tan",qty:1,desc:"Quarter-round plate 6x6"},{bag:3,color:"tan",qty:2,desc:"Bracket 1x2"},
+ {bag:3,color:"green",qty:1,desc:"Plate 4x8"},{bag:3,color:"green",qty:1,desc:"Plate 2x3"},{bag:3,color:"green",qty:1,desc:"Tile 1x6"},
+ {bag:3,color:"white",qty:1,desc:"Plate 4x6"},{bag:3,color:"white",qty:2,desc:"Brick 2x3"},
+ {bag:3,color:"lbg",qty:2,desc:"Brick 2x2 w/ hole"},{bag:3,color:"lbg",qty:1,desc:"Plate 2x12"},
+ {bag:3,color:"black",qty:1,desc:"Plate 2x6"},{bag:3,color:"black",qty:1,desc:"Bracket 2x2"},{bag:3,color:"black",qty:1,desc:"Wheel axle 2x4"},
+ {bag:3,color:"dbg",qty:1,desc:"Brick 2x3"},
+ {bag:3,color:"blue",qty:2,desc:"Brick 2x3"},{bag:3,color:"azure",qty:1,desc:"Brick 1x6"},
+ {bag:3,color:"red",qty:1,desc:"Fence 1x4"},{bag:3,color:"red",qty:1,desc:"Brick 2x4"},{bag:3,color:"red",qty:1,desc:"Plate 2x6"}
+]};
+
+/*DRAW*/
+
+const RB_COLORS={"0":["Black","#05131D"],"1":["Blue","#0055BF"],"2":["Green","#237841"],"3":["Dark Turquoise","#008F9B"],"4":["Red","#C91A09"],"5":["Dark Pink","#C870A0"],"6":["Brown","#583927"],"7":["Light Gray","#9BA19D"],"8":["Dark Gray","#6D6E5C"],"9":["Light Blue","#B4D2E3"],"10":["Bright Green","#4B9F4A"],"11":["Light Turquoise","#55A5AF"],"12":["Salmon","#F2705E"],"13":["Pink","#FC97AC"],"14":["Yellow","#F2CD37"],"15":["White","#FFFFFF"],"17":["Light Green","#C2DAB8"],"18":["Light Yellow","#FBE696"],"19":["Tan","#E4CD9E"],"20":["Light Violet","#C9CAE2"],"22":["Purple","#81007B"],"23":["Dark Blue-Violet","#2032B0"],"25":["Orange","#FE8A18"],"26":["Magenta","#923978"],"27":["Lime","#BBE90B"],"28":["Dark Tan","#958A73"],"29":["Bright Pink","#E4ADC8"],"30":["Medium Lavender","#AC78BA"],"31":["Lavender","#E1D5ED"],"33":["Trans-Dark Blue","#0020A0"],"34":["Trans-Green","#84B68D"],"35":["Trans-Bright Green","#D9E4A7"],"36":["Trans-Red","#C91A09"],"40":["Trans-Black","#635F52"],"41":["Trans-Light Blue","#AEEFEC"],"42":["Trans-Neon Green","#F8F184"],"43":["Trans-Very Lt Blue","#C1DFF0"],"45":["Trans-Dark Pink","#DF6695"],"46":["Trans-Yellow","#F5CD2F"],"47":["Trans-Clear","#FCFCFC"],"52":["Trans-Purple","#A5A5CB"],"57":["Trans-Orange","#F08F1C"],"68":["Very Light Orange","#F3CF9B"],"69":["Light Purple","#CD6298"],"70":["Reddish Brown","#582A12"],"71":["Light Bluish Gray","#A0A5A9"],"72":["Dark Bluish Gray","#6C6E68"],"73":["Medium Blue","#5A93DB"],"74":["Medium Green","#73DCA1"],"77":["Light Pink","#FECCCF"],"78":["Light Nougat","#F6D7B3"],"80":["Metallic Silver","#A5A9B4"],"82":["Metallic Gold","#DBAC34"],"84":["Medium Nougat","#AA7D55"],"85":["Dark Purple","#3F3691"],"86":["Light Brown","#7C503A"],"89":["Royal Blue","#4C61DB"],"92":["Nougat","#D09168"],"100":["Light Salmon","#FEBABD"],"110":["Violet","#4354A3"],"112":["Medium Bluish Violet","#6874CA"],"115":["Medium Lime","#C7D23C"],"118":["Aqua","#B3D7D1"],"120":["Light Lime","#D9E4A7"],"125":["Light Orange","#F9BA61"],"151":["Very Light Bluish Gray","#E6E3E0"],"179":["Flat Silver","#898788"],"182":["Trans-Orange","#F08F1C"],"191":["Bright Light Orange","#F8BB3D"],"212":["Bright Light Blue","#9FC3E9"],"216":["Rust","#B31004"],"226":["Bright Light Yellow","#FFF03A"],"232":["Sky Blue","#7DBFDD"],"272":["Dark Blue","#0A3463"],"288":["Dark Green","#184632"],"297":["Pearl Gold","#AA7F2E"],"308":["Dark Brown","#352100"],"313":["Maersk Blue","#3592C3"],"320":["Dark Red","#720E0F"],"321":["Dark Azure","#078BC9"],"322":["Medium Azure","#36AEBF"],"323":["Light Aqua","#ADC3C0"],"326":["Yellowish Green","#DFEEA5"],"330":["Olive Green","#9B9A5A"],"335":["Sand Red","#D67572"],"351":["Medium Dark Pink","#F785B1"],"353":["Coral","#FF698F"],"366":["Earth Orange","#FA9C1C"],"373":["Sand Purple","#845E84"],"378":["Sand Green","#A0BCAC"],"379":["Sand Blue","#6074A1"],"383":["Chrome Silver","#E0E0E0"],"450":["Fabuland Brown","#B67B50"],"462":["Medium Orange","#FFA70B"],"484":["Dark Orange","#A95500"],"503":["Very Light Gray","#E6E3DA"],"1050":["Trans-Clear Glitter","#E6E6E6"],"1088":["Medium Brown","#755945"],"1089":["Warm Tan","#CCA373"],"1103":["Pastel Blue","#B3D7FF"],"1135":["Vibrant Coral","#EF5B6B"],"1136":["Reddish Orange","#CA4C0B"],"1140":["Dark Nougat","#AD6140"],"1142":["Light Lilac","#D3BDE3"]};
+const PART_NAMES={"3023":"Plate 1x2","54200":"Slope 30 1x1","85984":"Slope 30 1x2","3710":"Plate 1x4","3022":"Plate 2x2","25269":"Tile 1x1 quarter round","11477":"Slope curved 1x2","3020":"Plate 2x4","4073":"Round plate 1x1","3069":"Tile 1x2","3005":"Brick 1x1","3024":"Plate 1x1","98138":"Round tile 1x1","3004":"Brick 1x2","3021":"Plate 2x3","35480":"Plate 1x2 rounded","41740":"Plate 1x4 w/ 2 studs","15068":"Slope curved 2x2","3622":"Brick 1x3","4589b":"Round cone 1x1","87079":"Tile 2x4","13965":"Brick arch 1x3","3062":"Round brick 1x1","2412b":"Tile 1x2 grille","2357":"Brick corner 2x2","6636":"Tile 1x6","3040":"Slope 45 1x2","2431":"Tile 1x4","3623":"Plate 1x3","6541":"Technic brick 1x1","99207":"Bracket 2x2 inverted","85861":"Round plate 1x1 open stud","87580":"Plate 2x2 jumper","3010":"Brick 1x4","4032":"Plate round 2x2","26601":"Tile 2x2 triangular","99563":"Tile 1x2 ingot","14716":"Brick 1x1x3","3001":"Brick 2x4","3070":"Tile 1x1","87087":"Brick 1x1 side stud","2420":"Plate corner 2x2","3795":"Plate 2x6","38320":"Window pane 1x2","2780":"Technic pin 1x1","44728":"Bracket 1x2","60592":"Window 1x2","3068":"Tile 2x2","15573":"Plate 1x2 jumper","93606":"Slope curved 2x4","32607":"Round leaves 1x1","28192":"Slope 45 1x2 cutout","11211":"Brick 1x2 side studs","3032":"Plate 4x6","30136":"Brick 1x2 log","3003":"Brick 2x2","3660":"Slope inverted 2x2","32062":"Technic axle 1x2","98283":"Brick 1x2 masonry","99781":"Bracket 1x2","3937":"Hinge brick 1x2","6134":"Hinge top 2x2","3009":"Brick 1x6","29119":"Slope curved 1x2 right","29120":"Slope curved 1x2 left","11458":"Plate 1x2 pin hole","3666":"Plate 1x6","3460":"Plate 1x8","24866":"Round flower plate 1x1","2449":"Slope inverted 75 1x2","3700":"Technic brick 1x2","53451":"Barb 1x1","87747":"Barb 1x1","43888":"Round brick 1x1 tall","34103":"Plate 1x3 w/ 2 studs","3002":"Brick 2x3","93273":"Slope curved 1x4 double","36841":"Round plate 1x1 w/ bar","3941":"Brick round 2x2","41769":"Wedge plate 2x4 right","41770":"Wedge plate 2x4 left","23443":"Bar holder 1x1","15100":"Technic pin 1x1","15712":"Tile 1x1 clip","32013":"Technic connector 1x1","22885":"Brick 1x2 side studs","18654":"Round beam 1x1","26603":"Tile 2x3","30414":"Brick 1x4 side studs","4286":"Slope 33 1x3","50950":"Slope curved 1x3","4070":"Brick 1x1 headlight","18980":"Plate round corner 2x6","60478":"Plate 1x2 handle","4274":"Technic pin 1x1","20482":"Round tile 1x1 w/ bar","6014b":"Round wheel 1x1","3008":"Brick 1x8","3034":"Plate 2x8","61252":"Plate 1x1 clip","4460b":"Slope 75 1x2","49311":"Brick 1x4 tall","2540":"Plate 1x2 handle","3665":"Slope inverted 1x2","4162":"Tile 1x8","3673":"Technic pin 1x1","14417":"Plate 1x2 ball","14418":"Plate 1x2 ball cup","6558":"Technic pin 1x1","2429c01":"Hinge plate 1x4","48336":"Plate 1x2 handle end","33909":"Tile 2x2 w/ studs","2432":"Tile 1x2 handle","30413":"Panel 1x4","6081":"Slope curved 2x4","3176":"Plate 2x3 hole","87083":"Technic axle 1x1","11476":"Plate 1x2 clip","4477":"Plate 1x10","4871":"Slope inverted 2x4","6111":"Brick 1x10","3832":"Plate 2x10","3709":"Technic plate 2x4","3701":"Technic brick 1x4","3894":"Technic brick 1x6","3028":"Plate 6x12","3030":"Plate 4x10","3035":"Plate 4x8","3038":"Slope 45 2x3","3039":"Slope 45 2x2","3298":"Slope 33 2x3","4287":"Slope inverted 33 1x3","3747b":"Slope inverted 33 2x3","4740":"Dish inverted 2x2","3044c":"Slope 45 double 1x2","2730":"Technic brick 1x10","6005":"Brick arch 1x3","2454":"Brick 1x2 tall","14719":"Tile corner 2x2","3749":"Technic axle pin 1x1","3829c01":"Steering wheel 1x2","56890":"Tire 2x2","98282":"Mudguard 2x4","44567b":"Hinge plate 1x2","32028":"Plate 1x2 door rail","52036":"Vehicle base 4x12","6157":"Plate 2x2 wheel holder","44865":"Brick 1x2 pin","98281":"Wedge 4x6","57783":"Windscreen 3x4","2877":"Brick 1x2 grille","14769":"Tile round 2x2","14520":"Brick 2x4 arches","52501":"Slope inverted 1x6","85974":"Minifig hair 1x1","3245c":"Brick 1x2x2","4865b":"Panel 1x2","60470b":"Plate 1x2 clips","2431pb0733":"Tile 1x4 printed","4265c":"Technic bush 1x1","6538c":"Technic axle connector 1x1","77845":"Tile 1x2 rounded","44861":"Brick 1x1 axle","24299":"Wedge plate 2x2 right","24307":"Wedge plate 2x2 left","80545":"Tile 1x1 half round","2423":"Leaves 2x2","5489":"Round leaves 2x2","65578":"Bar holder 1x1","26287":"Brick 1x1 bracket","6254":"Minifig item 1x1","60475b":"Brick 1x1 clip","60596":"Door frame 1x4","2498":"Brick 2x2 corner","61678":"Slope curved 1x4","85943":"Brick round 2x2","1126":"Tile 1x1 round","39613":"Tile 1x1 round","4519":"Technic axle 1x1","3830":"Hinge brick 1x4","3831":"Hinge brick top 1x4","4151b":"Plate 2x2 jumper","30237b":"Brick 1x2 rounded","41879":"Minifig legs 1x2","973pb4420c01":"Minifig torso 1x2"};
+
+/* ===== live library: per-bag inventories from the LocaBriques public API ===== */
+const LB_PROXY=/netlify\.app$/.test(location.hostname);
+const lbUrl=u=>LB_PROXY?u.replace("https://locabriques.fr/api/","/lb/"):u;
+const LIVE_API=lbUrl("https://locabriques.fr/api/inventories/");
+function partName(pid){
+  if(PART_NAMES[pid]) return PART_NAMES[pid];
+  if(/^3626/.test(pid)) return "Minifig head 1x1";
+  if(/^97[01]/.test(pid)) return "Minifig legs 1x2";
+  if(/^97[36]/.test(pid)) return "Minifig torso 1x2";
+  const b=pid.replace(/(pb|pr)\w+$/,""); if(PART_NAMES[b]) return PART_NAMES[b]+" (printed)";
+  return "Part "+pid;
+}
+function rbKey(c){ const k="rb"+c; if(!PALETTE[k]){ const v=RB_COLORS[c]||["Other","#9BA19D"]; PALETTE[k]={he:v[0],hex:v[1]}; PALETTE[k].lab=hexToLab(v[1]); EN[k]=v[0]; } return k; }
+async function loadLiveSet(num,knownUrl){
+  num=String(num).replace(/-\d+$/,"").trim();
+  if(SETS_BY_NUM[num]) return num;
+  let pick;
+  if(knownUrl) pick={url:knownUrl};
+  else { const r=await fetch(`${LIVE_API}?set_num=${encodeURIComponent(num)}-1`); if(!r.ok) throw new Error("http "+r.status);
+    const j=await r.json(); const res=(j.results||[]); if(!res.length) throw new Error("none");
+    pick=res.find(x=>x.is_reference)||res[0]; }
+  const d=await (await fetch(lbUrl(pick.url))).json();
+  const items=[];
+  for(const bag of d.bag_list||[]){ const bn=Math.max(1,parseInt(bag.bag_number)||1);
+    for(const [col,parts] of Object.entries(bag.content||{})) for(const [pid,q] of Object.entries(parts)){
+      if(/stk/i.test(pid)) continue; items.push({bag:bn,color:rbKey(col),qty:+q,desc:partName(pid),part:pid}); } }
+  if(!items.length) throw new Error("empty");
+  const nm=(d.set&&d.set.name&&d.set.name!=="-")?d.set.name:("Set "+num);
+  registerLiveSet(num,nm,(d.set&&d.set.year)||"",items);
+  saveLiveSet(num,nm,(d.set&&d.set.year)||"",items);
+  return num;
+}
+/* ---- on-device library: every set loaded once is kept on the phone and opens instantly next time ---- */
+const LIVE_NUMS=(()=>{ try{ return JSON.parse(localStorage.getItem("bp_sets")||"[]"); }catch(e){ return []; } })();
+function saveLiveSet(num,nm,year,items){
+  try{ const compact=items.map(i=>[i.bag,i.color.slice(2),i.qty,i.part]);
+    localStorage.setItem("bp_set_"+num,JSON.stringify({nm,year,it:compact}));
+    if(!LIVE_NUMS.includes(num)){ LIVE_NUMS.push(num); localStorage.setItem("bp_sets",JSON.stringify(LIVE_NUMS)); } }catch(e){}
+}
+function registerLiveSet(num,nm,year,items){
+  if(SETS_BY_NUM[num]) return;
+  SETS_BY_NUM[num]={name:`${num} ${nm}`,note:"Real bag-by-bag inventory (LocaBriques library).",items};
+  const cnt={}; for(const it of items) cnt[it.color]=(cnt[it.color]||0)+it.qty;
+  const pieces=items.reduce((a,i)=>a+i.qty,0), bagsN=new Set(items.map(i=>i.bag)).size;
+  const cols=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(e=>e[0]).filter(k=>!/Trans/.test(PALETTE[k].he)).slice(0,4);
+  CATALOG.push({num,name:nm,theme:"LEGO",year,pieces,bagsN,price:Math.round(pieces*0.08+6),cols,parts:true,live:true});
+  REAL_SETS.push({num,name:nm,year,theme:"",pieces,bagsN});
+  try{ for(const u of ["marco","jake"]) if(!st.shelves[u].includes(num)) st.shelves[u].push(num); }catch(e){}
+}
+function restoreLiveSets(){
+  for(const num of LIVE_NUMS){ try{ const c=JSON.parse(localStorage.getItem("bp_set_"+num)||"null"); if(!c) continue;
+    registerLiveSet(num,c.nm,c.year,c.it.map(([bag,col,qty,part])=>({bag,color:rbKey(col),qty,desc:partName(part),part}))); }catch(e){} }
+}
+
+
+/* ===== autocomplete over the whole library (index loaded once, cached on the device) ===== */
+let LIB=null, libLoading=null;
+function libIndex(){
+  if(LIB) return Promise.resolve(LIB);
+  try{ const c=JSON.parse(localStorage.getItem("bp_lib")||"null"); if(c&&Date.now()-c.t<30*864e5&&c.d.length){ LIB=c.d; return Promise.resolve(LIB);} }catch(e){}
+  if(libLoading) return libLoading;
+  libLoading=(async()=>{ const out={}; let url=`${LIVE_API}?page_size=1000`, n=0;
+    while(url&&n<40){ n++; const r=await fetch(url); if(!r.ok) break; const j=await r.json();
+      for(const x of j.results||[]){ const sn=(x.set&&x.set.set_num)||""; const num=sn.replace(/-1$/,""); if(!num||/-/.test(num)) continue;
+        if(out[num]&&!x.is_reference) continue;
+        out[num]=[num,(x.set.name&&x.set.name!=="-")?x.set.name:"Set "+num,x.set.year||"",x.bag_count||0,x.total_part_count||0,x.url]; }
+      url=j.next?lbUrl(j.next):null; }
+    LIB=Object.values(out); try{ localStorage.setItem("bp_lib",JSON.stringify({t:Date.now(),d:LIB})); }catch(e){}
+    libLoading=null; return LIB; })().catch(e=>{libLoading=null; return null;});
+  return libLoading;
+}
+function acMatches(q){
+  q=q.toLowerCase(); const isNum=/^\d+$/.test(q), all=[], seen=new Set();
+  const hit=(num,name)=> isNum ? num.startsWith(q) : (name.toLowerCase().includes(q)||num.startsWith(q));
+  for(const s of CATALOG) if(hit(s.num,s.name)){ all.push({num:s.num,name:s.name,year:s.year,bags:s.bagsN,parts:s.pieces,here:true}); seen.add(s.num); }
+  for(const r of LIB||[]) if(!seen.has(r[0])&&hit(r[0],r[1])) all.push({num:r[0],name:r[1],year:r[2],bags:r[3],parts:r[4],url:r[5]});
+  all.sort((a,b)=>(b.here?1:0)-(a.here?1:0)||a.num.length-b.num.length||a.num.localeCompare(b.num,undefined,{numeric:true}));
+  return all;
+}
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function mark(text,q,prefix){ const t=String(text), i=prefix?(t.toLowerCase().startsWith(q.toLowerCase())?0:-1):t.toLowerCase().indexOf(q.toLowerCase());
+  return i<0?esc(t):esc(t.slice(0,i))+`<b class="hl">${esc(t.slice(i,i+q.length))}</b>`+esc(t.slice(i+q.length)); }
+function acRender(){
+  const q=$("search").value.trim(), box=$("ac");
+  if(!q){ box.classList.remove("on"); box.innerHTML=""; return; }
+  const all=acMatches(q), m=all.slice(0,30), isNum=/^\d+$/.test(q);
+  let h=all.length?`<div class="hint cnt"><b>${all.length.toLocaleString()}</b> set${all.length>1?"s":""} ${isNum?`starting with <b>${esc(q)}</b>`:`matching “${esc(q)}”`}${all.length>m.length?` · keep typing to narrow`:""}</div>`:"";
+  h+=m.map(x=>`<div class="it" data-num="${x.num}" data-url="${x.url||""}"><img ${imgAttrs({num:x.num,name:x.name,cols:[],pieces:x.parts})} alt=""><div><div class="n">${isNum?`<span class="num">${mark(x.num,q,true)}</span> `:""}${isNum?esc(x.name):mark(x.name,q,false)}</div><div class="m">${isNum?"":mark(x.num,q,true)+" · "}${x.year?`${x.year} · `:""}${x.parts} pcs · ${x.bags} bags</div></div><span class="tag">${x.here?"In demo":"Add"}</span></div>`).join("");
+  if(!LIB) h+=`<div class="hint">${libLoading?"Loading the library of 1,700+ sets…":"Library unavailable right now. Showing demo sets only."}</div>`;
+  else if(!all.length) h=`<div class="hint">No set ${isNum?"starts with":"matches"} “${esc(q)}” in the library.</div>`;
+  box.innerHTML=h; box.classList.add("on");
+  box.querySelectorAll(".it").forEach(el=>el.onclick=()=>acPick(el.dataset.num,el.dataset.url));
+}
+async function acPick(num,url){
+  $("ac").classList.remove("on"); $("search").value=num; $("search").blur();
+  if(!SETS_BY_NUM[num]){ toast("Loading set "+num+"…"); try{ await loadLiveSet(num,url); toast(`Added ${setOf(num).name} · ${setOf(num).bagsN} bags`);}catch(e){ toast("Couldn't load set "+num+"."); } }
+  rDiscover();
+}
+
+
+/* ===== tap a set photo to see it large ===== */
+document.addEventListener("click",e=>{
+  const im=e.target.closest("img.thumb"); if(!im) return;
+  e.preventDefault(); e.stopPropagation();
+  const card=im.closest(".setrow")||im.parentElement, t=card&&card.querySelector(".t"), m=card&&card.querySelector(".s");
+  $("lbImg").src=im.currentSrc||im.src; $("lbCap").innerHTML=(t?t.textContent:"")+(m?`<small>${m.textContent}</small>`:"");
+  $("lb").classList.add("on");
+},true);
+document.addEventListener("click",e=>{ if(e.target.closest("#lb")) $("lb").classList.remove("on"); });
+
+/* ===== marketplace demo data ===== */
+const CATALOG=REAL_SETS.map(r=>{ const cnt={}; for(const it of REAL_SET_DATA[r.num].items) cnt[it.color]=(cnt[it.color]||0)+it.qty;
+  const cols=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(e=>e[0]).filter(k=>!/^bl(12|13|14|15|17|19|20|50|98|108)$/.test(k)).slice(0,4);
+  return {num:r.num,name:r.name,theme:r.theme||"LEGO",year:r.year,pieces:r.pieces,bagsN:r.bagsN,price:Math.round(r.pieces*0.08+6),cols,parts:true}; });
+const SETS_BY_NUM={}; for(const r of REAL_SETS) SETS_BY_NUM[r.num]=REAL_SET_DATA[r.num];
+restoreLiveSets();
+const USERS={
+  emma:{name:"Emma R.",city:"Denver, CO"},
+  marco:{name:"Marco D.",city:"Denver, CO",mi:4},
+  jake:{name:"Jake T.",city:"Boulder, CO",mi:26},
+  priya:{name:"Priya S.",city:"Austin, TX",mi:770}
+};
+const FEE=0.10;
+const fresh=()=>({role:"buyer",tab:"discover",
+  shelves:{marco:["60362","31151","76398",...LIVE_NUMS],jake:["60362","60320","40487",...LIVE_NUMS],priya:["41422","31170","76426"]},
+  orders:[], seq:1041, activeOrder:null});
+let st=fresh();
+const ME_BUYER="emma", ME_SELLER="marco";
+const $=id=>document.getElementById(id);
+const setOf=n=>CATALOG.find(s=>s.num===n);
+const money=v=>"$"+(Math.round(v*100)/100).toFixed(v%1?2:0);
+function toast(t){const e=$("toast");e.textContent=t;e.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display="none",2600);}
+const openM=id=>$(id).classList.add("show"), closeM=id=>$(id).classList.remove("show");
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("show");}));
+
+/* order lifecycle */
+const STEPS=[
+  ["matched","Matched with an owner"],["accepted","Owner accepted"],["paid","Paid · held by Backpack"],
+  ["sorting","Owner is sorting into bags"],["verified","Verified complete"],["shipped","Shipped"],["completed","Received · payment released"]];
+const stepIdx=s=>STEPS.findIndex(x=>x[0]===s);
+
+/* ===== real set photos (catalog CDNs), drawn thumbnail as fallback ===== */
+const IMG_SRC=[n=>`https://images.brickset.com/sets/images/${n}-1.jpg`,n=>`https://cdn.rebrickable.com/media/sets/${n}-1.jpg`,n=>`https://img.bricklink.com/ItemImage/SN/0/${n}-1.png`];
+function imgAttrs(set){
+  if(!/^\d+$/.test(set.num)) return `src="${thumb(set)}"`;
+  return `src="${IMG_SRC[0](set.num)}" loading="lazy" referrerpolicy="no-referrer" data-n="${set.num}" data-i="0" onerror="imgFail(this)"`;
+}
+function imgFail(el){
+  const n=el.dataset.n, i=+el.dataset.i+1; if(!n) return;
+  if(i<IMG_SRC.length){ el.dataset.i=i; el.src=IMG_SRC[i](n); return; }
+  el.onerror=null; const s=setOf(n); if(s) el.src=thumb(s); else el.src="icon-192.png";
+}
+/* ===== thumbnails drawn from bricks ===== */
+const thumbCache={};
+function thumb(set){
+  if(thumbCache[set.num]) return thumbCache[set.num];
+  const c=document.createElement("canvas"); c.width=144; c.height=144; const x=c.getContext("2d");
+  const g=x.createLinearGradient(0,0,144,144); g.addColorStop(0,"#fbfaf7"); g.addColorStop(1,"#ece8e0"); x.fillStyle=g; x.fillRect(0,0,144,144);
+  let seed=[...set.num].reduce((a,ch)=>a*31+ch.charCodeAt(0),7)%2147483647; const rnd=()=>((seed=seed*16807%2147483647)/2147483647);
+  const shapes=[{kind:"brick",a:2,b:4},{kind:"brick",a:2,b:2},{kind:"plate",a:1,b:4},{kind:"brick",a:1,b:2}];
+  const ps=[]; for(let i=0;i<6;i++) ps.push({color:PALETTE[set.cols[i%set.cols.length]]?set.cols[i%set.cols.length]:"brown",shape:shapes[i%4],x:24+rnd()*96,y:24+rnd()*90,r:rnd()*3});
+  ps.sort((a,b)=>a.y-b.y); ps.forEach(p=>drawPiece(x,p,17));
+  return thumbCache[set.num]=c.toDataURL();
+}
+const owners=num=>Object.entries(st.shelves).filter(([u,l])=>l.includes(num)).map(([u])=>u).sort((a,b)=>USERS[a].mi-USERS[b].mi);
+
+/* ===== rendering ===== */
+function render(){
+  $("roleBuyer").classList.toggle("on",st.role==="buyer"); $("roleSeller").classList.toggle("on",st.role==="seller");
+  const me=st.role==="buyer"?USERS[ME_BUYER]:USERS[ME_SELLER];
+  $("persona").textContent=`Signed in as ${me.name} · ${me.city}`;
+  const tabs = st.role==="buyer"
+    ? [["discover","🔍","Discover"],["orders","🧾","My orders"]]
+    : [["sort","📷","Scan & sort"],["requests","📬","Requests"],["shelf","🗄️","My shelf"]];
+  if(!tabs.some(t=>t[0]===st.tab)) st.tab=tabs[0][0];
+  const reqCount=st.orders.filter(o=>o.seller===ME_SELLER&&o.status==="matched").length;
+  const ordCount=st.orders.filter(o=>o.buyer===ME_BUYER&&(o.status==="accepted"||o.status==="shipped")).length;
+  $("nav").innerHTML=tabs.map(([k,ic,l])=>{const b=k==="requests"?reqCount:k==="orders"?ordCount:0;
+    return `<button data-tab="${k}" class="${k===st.tab?"on":""}"><span class="ic">${ic}</span>${l}${b?`<span class="badge">${b}</span>`:""}</button>`;}).join("");
+  $("nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{st.tab=b.dataset.tab;render();});
+  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on",v.dataset.view===st.tab));
+  ({discover:rDiscover,orders:rOrders,requests:rRequests,shelf:rShelf,sort:rSort})[st.tab]();
+  if(st.tab!=="sort") stopSorter();
+  window.scrollTo(0,0);
+}
+function guide(id,html){$(id).innerHTML=html?`<b>Demo ›</b><span>${html}</span>`:""; $(id).style.display=html?"flex":"none";}
+
+function rDiscover(){
+  const q=$("search").value.trim().toLowerCase();
+  const list=CATALOG.filter(s=>!q||(/^\d+$/.test(q)?s.num.startsWith(q):(s.name.toLowerCase().includes(q)||s.num.startsWith(q))));
+  guide("g-discover", st.orders.length? "" : "You are Emma, a buyer in Denver. Tap <b>Want this</b> on <b>Car Wash</b> to start.");
+  $("catalog").innerHTML=list.map(s=>{
+    const o=owners(s.num), mine=st.orders.find(x=>x.set===s.num&&x.buyer===ME_BUYER&&x.status!=="completed");
+    const near=o.filter(u=>USERS[u].mi<100).length;
+    return `<div class="card"><div class="setrow"><img class="thumb" ${imgAttrs(s)} alt="">
+      <div class="meta"><div class="t">${s.name}</div><div class="s">${s.num} · ${s.theme} · ${s.pieces.toLocaleString()} pcs · ${s.year}</div>
+      ${o.length?`<span class="pill">● ${o.length} owner${o.length>1?"s have":" has"} it built${near?` · ${near} near you`:""}</span>`:`<span class="pill gray">No owners yet · we'll alert them</span>`}</div></div>
+      <div class="actions"><div style="flex:1;align-self:center"><div class="s" style="font-size:12px;color:var(--mut)">Typical price</div><div class="price">${money(s.price)}</div></div>
+      ${mine?`<button class="btn ghost" data-go="orders">View order</button>`:`<button class="btn pri" data-want="${s.num}">Want this</button>`}</div></div>`;}).join("")||(/^\d{4,6}$/.test(q)?"":`<div class="empty">No sets match “${q}”.</div>`);
+  if(/^\d{4,6}$/.test(q)&&!CATALOG.some(s=>s.num===q)) $("catalog").innerHTML+=`<div class="card" style="text-align:center"><div class="t" style="font-weight:700;margin-bottom:4px">Set ${q} isn't in the demo yet</div><div class="s" style="color:var(--mut);margin-bottom:10px">Load its real bag-by-bag inventory from the LocaBriques library (1,700+ sets).</div><button class="btn pri" id="liveLoad">Load set ${q}</button></div>`;
+  if($("liveLoad")) $("liveLoad").onclick=async()=>{ const b=$("liveLoad"); b.disabled=true; b.textContent="Loading…";
+    try{ const n=await loadLiveSet(q); toast(`Added ${setOf(n).name} · ${setOf(n).bagsN} bags`); rDiscover(); }
+    catch(e){ b.disabled=false; b.textContent=`Load set ${q}`; toast(/none|empty/.test(e.message)?`No bag inventory for ${q} in the library yet.`:"Couldn't reach the library. Check your connection."); } };
+  $("catalog").querySelectorAll("[data-want]").forEach(b=>b.onclick=()=>openWish(b.dataset.want));
+  $("catalog").querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{st.tab="orders";render();});
+}
+$("search").oninput=()=>{ rDiscover(); acRender(); if(!LIB&&!libLoading&&$("search").value.trim().length>=1) libIndex().then(acRender); };
+$("search").onfocus=()=>{ if(!LIB) libIndex().then(()=>{ if(document.activeElement===$("search")) acRender(); }); acRender(); };
+document.addEventListener("click",e=>{ if(!e.target.closest(".acwrap")) $("ac").classList.remove("on"); });
+
+let wishSet=null;
+function openWish(num){
+  wishSet=setOf(num);
+  $("wTitle").textContent=`${wishSet.name} (${wishSet.num})`;
+  const o=owners(num);
+  $("wSub").textContent=o.length?`${o.length} owner${o.length>1?"s":""} in the US have it built. The nearest is ${USERS[o[0]].mi} miles away.`:"Nobody has it listed yet. We'll ask owners who match.";
+  const r=$("wPrice"); r.min=Math.round(wishSet.price*0.6); r.max=Math.round(wishSet.price*1.5); r.value=wishSet.price;
+  $("wPriceV").textContent=money(wishSet.price); r.oninput=()=>$("wPriceV").textContent=money(+r.value);
+  $("wShip").textContent=USERS[ME_BUYER].city;
+  openM("wishModal");
+}
+$("wCancel").onclick=()=>closeM("wishModal");
+$("wGo").onclick=()=>{
+  const price=+$("wPrice").value, o=owners(wishSet.num), seller=o[0]||null;
+  const ord={id:++st.seq,set:wishSet.num,buyer:ME_BUYER,seller,price,status:seller?"matched":"waiting",bagsDone:[],t:Date.now()};
+  st.orders.unshift(ord); closeM("wishModal");
+  toast(seller?`Matched! Asking ${USERS[seller].name} (${USERS[seller].mi} mi away)`:"Added to wishlist. We'll notify owners.");
+  st.tab="orders"; render();
+};
+
+function timeline(o){
+  const i=stepIdx(o.status);
+  return `<ul class="tl">${STEPS.map(([k,l],j)=>{
+    let extra=""; if(k==="sorting"&&(o.status==="sorting")) extra=` · ${o.bagsDone.length}/${bagCount(o)} bags`;
+    return `<li class="${j<i||o.status==="completed"?"done":j===i?"now":""}">${l}${extra}</li>`;}).join("")}</ul>`;
+}
+const bagCount=o=>{const d=SETS_BY_NUM[o.set]; return d?new Set(d.items.map(i=>+i.bag)).size:3;};
+function money3(o){const fee=o.price*FEE;return {fee,payout:o.price-fee};}
+
+function rOrders(){
+  const mine=st.orders.filter(o=>o.buyer===ME_BUYER);
+  const next=mine.find(o=>o.status!=="completed");
+  let g="";
+  if(!mine.length) g="No orders yet. Go to <b>Discover</b> and tap <b>Want this</b>.";
+  else if(next&&next.status==="matched") g="Now switch to <b>Seller</b> (top right). You'll be Marco, the owner who has this set built.";
+  else if(next&&next.status==="accepted") g="Marco accepted. Tap <b>Pay</b>. The money is held until you confirm the set arrived complete.";
+  else if(next&&(next.status==="paid"||next.status==="sorting"||next.status==="verified")) g="Switch to <b>Seller</b> to take the set apart and sort it with the scanner.";
+  else if(next&&next.status==="shipped") g="The set is on its way. Tap <b>Confirm received</b> to release the payment to Marco.";
+  else if(mine[0]&&mine[0].status==="completed") g="That's the whole loop: buyer → match → sort → verify → ship → payout. 🎉";
+  guide("g-orders",g);
+  $("orderList").innerHTML=mine.map(o=>{const s=setOf(o.set), sel=o.seller?USERS[o.seller]:null;
+    let act="";
+    if(o.status==="accepted") act=`<button class="btn pri block" data-pay="${o.id}">Pay ${money(o.price)} · held until you confirm</button>`;
+    if(o.status==="shipped") act=`<button class="btn ok block" data-recv="${o.id}">Confirm received, complete</button>`;
+    return `<div class="card"><div class="setrow"><img class="thumb" ${imgAttrs(s)} alt="">
+      <div class="meta"><div class="t">${s.name}</div><div class="s">Order #${o.id} · max ${money(o.price)}</div>
+      ${sel?`<span class="pill blue">Seller: ${sel.name} · ${sel.mi} mi</span>`:`<span class="pill gray">Waiting for an owner</span>`}</div></div>
+      ${o.status!=="waiting"?timeline(o):""}${act}</div>`;}).join("")||`<div class="empty">Your wishlist is empty.</div>`;
+  $("orderList").querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.pay);o.status="paid";toast("Payment held by Backpack (demo). Marco can start sorting.");render();});
+  $("orderList").querySelectorAll("[data-recv]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.recv);o.status="completed";toast(`Payment released to ${USERS[o.seller].name}`);render();});
+}
+
+function rRequests(){
+  const mine=st.orders.filter(o=>o.seller===ME_SELLER);
+  const n=mine.find(o=>o.status!=="completed");
+  let g="";
+  if(!mine.length) g="No requests yet. Switch to <b>Buyer</b> and ask for <b>Car Wash</b>. Marco has it on his shelf.";
+  else if(n&&n.status==="matched") g="Emma wants your set. Tap <b>Accept</b>.";
+  else if(n&&n.status==="accepted") g="Waiting for Emma to pay. Switch to <b>Buyer</b> and tap <b>Pay</b>.";
+  else if(n&&(n.status==="paid"||n.status==="sorting")) g="Paid. Tap <b>Take apart &amp; sort</b> to open the scanner.";
+  else if(n&&n.status==="verified") g="Verified complete. Tap <b>Print shipping label</b>.";
+  else if(n&&n.status==="shipped") g="Shipped. Switch to <b>Buyer</b> to confirm it arrived.";
+  guide("g-requests",g);
+  $("reqList").innerHTML=mine.map(o=>{const s=setOf(o.set), b=USERS[o.buyer], m=money3(o);
+    let act="";
+    if(o.status==="matched") act=`<div class="actions"><button class="btn ghost" data-dec="${o.id}">Decline</button><button class="btn pri" data-acc="${o.id}">Accept</button></div>`;
+    if(o.status==="paid"||o.status==="sorting") act=`<button class="btn dark block" style="margin-top:10px" data-sort="${o.id}">📷 Take apart &amp; sort</button>`;
+    if(o.status==="verified") act=`<button class="btn pri block" style="margin-top:10px" data-ship="${o.id}">Print shipping label</button>`;
+    return `<div class="card"><div class="setrow"><img class="thumb" ${imgAttrs(s)} alt="">
+      <div class="meta"><div class="t">${b.name} wants your ${s.name}</div><div class="s">${s.num} · ${b.city} · ${USERS[ME_SELLER].mi} mi away</div>
+      <span class="pill amber">Order #${o.id}</span></div></div>
+      <div class="hr"></div>
+      <div class="kv"><span>Buyer pays</span><b>${money(o.price)}</b></div>
+      <div class="kv"><span>Backpack fee (10%)</span><b>−${money(m.fee)}</b></div>
+      <div class="kv"><span>You get</span><b style="color:var(--ok)">${money(m.payout)}</b></div>
+      ${o.status!=="matched"?timeline(o):""}${act}</div>`;}).join("")||`<div class="empty">No requests yet.</div>`;
+  const q=a=>$("reqList").querySelectorAll(a);
+  q("[data-acc]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.acc);o.status="accepted";toast("Accepted. Emma has been asked to pay.");render();});
+  q("[data-dec]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.dec);
+    const others=owners(o.set).filter(u=>u!==ME_SELLER); o.seller=others[0]||null; o.status=o.seller?"matched":"waiting";
+    toast(o.seller?`Declined. Emma's request moves to ${USERS[o.seller].name}.`:"Declined.");render();});
+  q("[data-sort]").forEach(b=>b.onclick=()=>{st.activeOrder=+b.dataset.sort;st.tab="sort";render();});
+  q("[data-ship]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.ship);o.status="shipped";toast("Label created (demo). Drop it off at the post office.");render();});
+}
+
+function rShelf(){
+  const l=st.shelves[ME_SELLER];
+  $("shelfList").innerHTML=l.map(n=>{const s=setOf(n), busy=st.orders.find(o=>o.seller===ME_SELLER&&o.set===n&&o.status!=="completed");
+    return `<div class="card"><div class="setrow"><img class="thumb" ${imgAttrs(s)} alt=""><div class="meta"><div class="t">${s.name}</div><div class="s">${s.num} · ${s.pieces.toLocaleString()} pcs</div>
+    ${busy?`<span class="pill amber">In an order</span>`:`<span class="pill gray">On display · typical ${money(s.price)}</span>`}
+    ${s.parts?`<span class="pill blue">${s.bagsN} bags mapped</span>`:""}</div></div></div>`;}).join("")||`<div class="empty">Nothing on your shelf yet.</div>`;
+}
+$("addShelf").onclick=()=>{
+  const l=st.shelves[ME_SELLER];
+  $("shelfPick").innerHTML=CATALOG.filter(s=>!l.includes(s.num)).map(s=>`<div class="card setrow" style="cursor:pointer" data-add="${s.num}"><img class="thumb" ${imgAttrs(s)} alt=""><div class="meta"><div class="t">${s.name}</div><div class="s">${s.num}</div></div></div>`).join("")||`<div class="empty">All demo sets added.</div>`;
+  $("shelfPick").querySelectorAll("[data-add]").forEach(d=>d.onclick=()=>{l.push(d.dataset.add);closeM("shelfModal");toast("Added to your shelf");render();});
+  openM("shelfModal");
+};
+$("sCancel").onclick=()=>closeM("shelfModal");
+
+/* ===== sort tab ===== */
+function curOrder(){return st.orders.find(o=>o.id===st.activeOrder)||st.orders.find(o=>o.seller===ME_SELLER&&(o.status==="paid"||o.status==="sorting"));}
+function rSort(){
+  const o=curOrder();
+  if(o&&SETS_BY_NUM[o.set]&&SET!==SETS_BY_NUM[o.set]) useSet(SETS_BY_NUM[o.set]);
+  if(o){ const s=setOf(o.set); $("sortTitle").textContent=`Sort · ${s.name}`; $("sortSub").textContent=`Order #${o.id} for ${USERS[o.buyer].name.replace(/\.$/,"")}. Pick a bag, sweep the phone over the pile, and bag the highlighted pieces.`;
+    if(o.status==="paid") o.status="sorting"; }
+  else { $("sortTitle").textContent="Sort"; $("sortSub").textContent="Practice mode. Pick one of 10 real LEGO sets below: the demo pile is that set's real pieces, sorted by its real bags."; }
+  renderBags();
+}
+function useSet(st2){ Tracker.reset(); SET=st2; refs=st2.refs||{}; selBag=1; demoScene=null; S.scale=null; if(mode==="demo"){demoScene=makeDemoScene(SET);} renderBags(); }
+function renderBags(){
+  const sw=$("setswitch"); const opts=REAL_SETS.map(r=>[r.num,`${r.num} ${r.name} · ${r.pieces} pcs · ${r.bagsN} bags`,SETS_BY_NUM[r.num]]).concat([["test","Test set · your own pieces",SET_TEST],["live","+ Load any set by number…",null]]);
+  sw.innerHTML=`<select id="setSel">${opts.map(([k,l,x])=>`<option value="${k}" ${SET===x?"selected":""}>${l}</option>`).join("")}</select>`;
+  $("setSel").onchange=async e=>{const v=e.target.value;
+    if(v==="live"){ const n=(prompt("LEGO set number (e.g. 10282)")||"").trim(); if(!/^\d{3,6}/.test(n)){renderBags();return;}
+      toast("Loading set "+n+"…"); try{ const k=await loadLiveSet(n); useSet(SETS_BY_NUM[k]); toast("Loaded "+SETS_BY_NUM[k].name); }catch(err){ toast("No bag inventory found for "+n+"."); renderBags(); } return; }
+    useSet(v==="test"?SET_TEST:SETS_BY_NUM[v]);};
+  const o=curOrder(), done=o?o.bagsDone:[];
+  const el=$("bagchips"); el.innerHTML="";
+  const mk=(b)=>{const d=document.createElement("button"); const items=b?SET.items.filter(i=>+i.bag===b):SET.items, q=items.reduce((a,i)=>a+i.qty,0);
+    d.className="bagchip"+(b===selBag?" on":"")+(b&&done.includes(b)?" done":""); d.style.setProperty("--c",b?bagColor(b):"#ff7a1a");
+    d.innerHTML=`<div class="n">${b?`<i style="background:${bagColor(b)}"></i>Bag ${b}`:"All bags"}</div><div class="c">${q} parts</div>`;
+    d.onclick=()=>{selBag=b;renderBags();if(result){labelComps(result);buildOverlay();}}; el.appendChild(d);};
+  mk(0); bags().forEach(mk);
+  $("legend").innerHTML= selBag?`<span><i style="background:${bagColor(selBag)}"></i>Goes in bag ${selBag}</span><span>Everything else is dimmed</span>`:`<span>Each piece shows its bag number once the app is sure</span>`;
+  const p=$("bagPanel");
+  if(!selBag){p.innerHTML=`<div class="meta"><div class="t">Pick a bag to start</div><div class="s">${SET.name} · ${total()} parts in ${bags().length} bags. ${SET.note||""}</div></div>`;}
+  else{
+    const items=SET.items.filter(i=>+i.bag===selBag), isDone=done.includes(selBag);
+    p.innerHTML=`<div class="setrow" style="align-items:flex-start"><div class="meta"><div class="t">Bag ${selBag} · ${items.reduce((a,i)=>a+i.qty,0)} parts</div>
+      <div class="parts">${items.map(i=>`<span><i class="sw" style="background:${PALETTE[i.color].hex}"></i>${EN[i.color]||PALETTE[i.color].he} ${i.desc} ×${i.qty}</span>`).join("")}</div></div></div>
+      <button class="btn ${isDone?"ghost":"dark"} block" style="margin-top:12px" id="bagDone">${isDone?"✓ Bag "+selBag+" sorted · undo":"Mark bag "+selBag+" as sorted"}</button>`;
+    $("bagDone").onclick=()=>{ if(!o){toast("Practice mode: nothing to save");return;}
+      if(isDone) o.bagsDone=o.bagsDone.filter(x=>x!==selBag); else {o.bagsDone.push(selBag); const nx=bags().find(b=>!o.bagsDone.includes(b)); if(nx){selBag=nx; toast(`Bag ${o.bagsDone.slice(-1)[0]} done. Next: bag ${nx}`);} else toast("All bags sorted!");}
+      renderBags(); if(result){labelComps(result);buildOverlay();} };
+  }
+  const all=o&&bags().every(b=>o.bagsDone.includes(b));
+  $("finishSort").disabled=!all; $("finishSort").style.display=o?"flex":"none";
+}
+$("finishSort").onclick=()=>{const o=curOrder(); if(!o) return; o.status="verified"; toast("Verified complete ✓ Ready to ship"); st.tab="requests"; render();};
+
+/* scanner plumbing */
+let SET=SETS_BY_NUM["60362"], refs={}, selBag=1, opt={thr:18,minArea:22}, result=null, frozen=false, mode=null, stream=null, lastT=0, demoScene=null;
+const S2=S; const view=$("view"), vctx=view.getContext("2d"), video=$("video");
+const proc=document.createElement("canvas"), pctx=proc.getContext("2d",{willReadFrequently:true});
+const ovl=document.createElement("canvas"), octx=ovl.getContext("2d"); const PW=400;
+const BAGCOL=["#22c55e","#3b82f6","#ec4899","#f59e0b","#8b5cf6","#14b8a6"]; const bagColor=b=>BAGCOL[(b-1)%BAGCOL.length];
+const setColors=()=>[...new Set(SET.items.map(i=>i.color))].filter(c=>PALETTE[c]);
+const bags=()=>[...new Set(SET.items.map(i=>+i.bag))].sort((a,b)=>a-b);
+const total=()=>SET.items.reduce((s,i)=>s+(+i.qty||0),0);
+function updateStats(){ if(!result) return; let n=0; for(const c of result.comps) if(c.state==="sure") n+=c.est;
+  $("stSure").textContent= selBag?`${n} for bag ${selBag} in view`:`${n} pieces identified`; }
+/*LOOP*/
+/*OVERLAY*/
+/* scale = pixels per stud, chosen so that as many regions as possible match a real part size of their colour */
+const _labelComps=labelComps;
+labelComps=function(r){
+  const byCol={}; for(const it of SET.items){ if(!PALETTE[it.color]) continue; (byCol[it.color]=byCol[it.color]||[]).push(studsOf(it)); }
+  const regs=r.comps.filter(c=>c.area>=40&&byCol[c.color]);
+  let best=null,bs=-1;
+  for(let k=0;k<=60;k++){ const sc=15*Math.pow(1.07,k); let score=0;
+    for(const c of regs){ const st=c.area/sc; if(byCol[c.color].some(x=>Math.abs(Math.log(st/x))<Math.log(1.45))) score+=1; }
+    if(score>bs){bs=score;best=sc;} }
+  if(regs.length>=4){ S.scale = S.scale ? S.scale*0.7+best*0.3 : best; }
+  _labelComps(r);
+};
+/*TRACKER*/
+const dimC=document.createElement("canvas");
+function buildOverlay(){ if(!result) return; Tracker.update(result); buildMaskInto(result,selBag,ovl,dimC); }
+function drawOverlay(){ if(!result) return; drawTracked(vctx,result,selBag,ovl,dimC,view.width,view.height); }
+function updateStats(){ const n=trackedCount(); $("stSure").textContent= selBag?`${n} for bag ${selBag} in view`:`${n} pieces identified`; }
+
+/* ===== Brickognize: identify unclear pieces on a frozen frame ===== */
+const BK_PROXY=/netlify\.app$/.test(location.hostname);
+const BK_URL=(BK_PROXY?"/bk":"https://api.brickognize.com")+"/predict/parts/";
+let snap=null, bkBusy=false;
+function takeSnap(){
+  const src=mode==="demo"?demoScene:video; if(!src||!crop) return null;
+  const w=1200, h=Math.round(w*crop[3]/crop[2]), c=document.createElement("canvas"); c.width=w; c.height=h;
+  c.getContext("2d").drawImage(src,crop[0],crop[1],crop[2],crop[3],0,0,w,h); return c;
+}
+function compBoxes(r){ const W=r.W, L=r.labels, bx={};
+  for(let i=0;i<L.length;i++){ const l=L[i]; if(l<0) continue; const x=i%W, y=(i/W)|0; const b=bx[l]||(bx[l]=[x,y,x,y]); if(x<b[0])b[0]=x; if(y<b[1])b[1]=y; if(x>b[2])b[2]=x; if(y>b[3])b[3]=y; }
+  return bx; }
+const baseId=id=>String(id).toLowerCase().replace(/(pb|pr|pat)\w*$/,"").replace(/[a-z]$/,"");
+function bagsForPart(id,color){
+  const its=SET.items.filter(i=>i.part&&(String(i.part).toLowerCase()===String(id).toLowerCase()));
+  const loose=its.length?its:SET.items.filter(i=>i.part&&baseId(i.part)===baseId(id));
+  const byCol=loose.filter(i=>i.color===color);
+  return {bags:[...new Set((byCol.length?byCol:loose).map(i=>+i.bag))].sort((a,b)=>a-b), found:loose.length>0};
+}
+async function bkIdentify(){
+  if(bkBusy||!result||!snap) return; bkBusy=true;
+  const r=result, bx=compBoxes(r), k=snap.width/r.W;
+  const todo=r.comps.filter(c=>!c.tiny&&c.state!=="sure"&&c.bags&&c.bags.length!==1&&bx[c.id]).sort((a,b)=>b.area-a.area).slice(0,8);
+  const box=$("bkRes"); box.style.display="block";
+  if(!todo.length){ box.innerHTML=`<div class="s">All visible pieces are already clear. Nothing to identify.</div>`; bkBusy=false; return; }
+  $("bkBtn").disabled=true; $("bkBtn").textContent=`Identifying ${todo.length} pieces…`;
+  box.innerHTML=`<div class="t" style="font-weight:800;margin-bottom:6px">Brickognize AI</div><div id="bkList"></div>`;
+  const out=[];
+  await Promise.all(todo.map(async(c,idx)=>{
+    const b=bx[c.id], pad=Math.max(6,(b[2]-b[0]+b[3]-b[1])*0.25);
+    const x0=Math.max(0,(b[0]-pad)*k), y0=Math.max(0,(b[1]-pad)*k), x1=Math.min(snap.width,(b[2]+pad)*k), y1=Math.min(snap.height,(b[3]+pad)*k);
+    const cw=Math.max(8,x1-x0), ch=Math.max(8,y1-y0), sc=Math.min(1,480/Math.max(cw,ch));
+    const cc=document.createElement("canvas"); cc.width=Math.round(cw*sc); cc.height=Math.round(ch*sc);
+    cc.getContext("2d").drawImage(snap,x0,y0,cw,ch,0,0,cc.width,cc.height);
+    const thumbUrl=cc.toDataURL("image/jpeg",0.8); let res={c,thumbUrl};
+    try{ const blob=await new Promise(ok=>cc.toBlob(ok,"image/jpeg",0.9)); const fd=new FormData(); fd.append("query_image",blob,"piece.jpg");
+      const rr=await fetch(BK_URL+"?top_k_items=3",{method:"POST",body:fd,headers:{accept:"application/json"}}); if(!rr.ok) throw new Error("http "+rr.status);
+      const j=await rr.json(); const it=(j.items||[])[0];
+      if(it){ const m=bagsForPart(it.id,c.color); Object.assign(res,{id:it.id,name:it.name,img:it.img_url,score:it.score,bags:m.bags,found:m.found}); }
+    }catch(e){ res.err=true; }
+    out[idx]=res; bkRenderList(out);
+  }));
+  // apply: pieces that resolve to exactly one bag become sure
+  for(const x of out) if(x&&x.bags&&x.bags.length===1){ x.c.bags=x.bags; x.c.state=!selBag||x.bags[0]===selBag?"sure":"no"; x.c.bk=x.bags[0]; }
+  bkDrawBadges(out);
+  const ok=out.filter(x=>x&&x.bags&&x.bags.length===1).length, err=out.filter(x=>x&&x.err).length;
+  $("bkBtn").disabled=false; $("bkBtn").textContent="🔍 Identify unclear pieces · Brickognize AI";
+  toast(err===out.length?"Couldn't reach Brickognize right now.":`Brickognize resolved ${ok} of ${out.length} pieces.`);
+  bkBusy=false;
+}
+function bkRenderList(out){
+  const l=$("bkList"); if(!l) return;
+  l.innerHTML=out.filter(Boolean).map(x=>{
+    const verdict= x.err?`<span style="color:#b91c1c">no answer</span>`
+      : !x.id?`<span style="color:var(--mut)">not recognised</span>`
+      : !x.found?`<span style="color:var(--mut)">not in this set</span>`
+      : x.bags.length===1?`<span style="color:${bagColor(x.bags[0])}">Bag ${x.bags[0]}</span>`
+      : `Bags ${x.bags.join(" / ")}`;
+    return `<div class="bkrow"><img class="crop" src="${x.thumbUrl}" alt="">${x.img?`<img src="${x.img}" alt="" referrerpolicy="no-referrer">`:""}<div><div style="font-weight:700">${x.name?esc(x.name):"…"}</div><div style="color:var(--mut);font-size:12px">${x.id?`${esc(x.id)} · ${Math.round((x.score||0)*100)}% match`:""}</div></div><span class="b">${verdict}</span></div>`;}).join("");
+}
+function bkDrawBadges(out){
+  if(!result) return; const sx=view.width/result.W, sy=view.height/result.H, R=Math.max(13,view.width/36);
+  vctx.save(); vctx.textAlign="center"; vctx.textBaseline="middle"; vctx.font=`800 ${Math.round(R*1.05)}px Plus Jakarta Sans, system-ui, sans-serif`;
+  for(const x of out){ if(!x||!x.bags||x.bags.length!==1) continue; const X=x.c.cx*sx, Y=x.c.cy*sy, b=x.bags[0];
+    vctx.globalAlpha=selBag&&b!==selBag?0.45:1;
+    vctx.beginPath(); vctx.arc(X,Y,R+4,0,7); vctx.fillStyle="#5b3df5"; vctx.fill();
+    vctx.beginPath(); vctx.arc(X,Y,R,0,7); vctx.fillStyle=bagColor(b); vctx.fill();
+    vctx.fillStyle="#fff"; vctx.fillText(String(b),X,Y+1); }
+  vctx.restore();
+}
+$("bkBtn").onclick=bkIdentify;
+$("freeze").onclick=()=>{frozen=!frozen;$("freeze").textContent=frozen?"▶":"❚❚";
+  if(frozen){ snap=takeSnap(); $("bkBtn").style.display="block"; } else { snap=null; $("bkBtn").style.display="none"; $("bkRes").style.display="none"; } };
+function goLive(){ $("bkBtn").style.display="none"; $("bkRes").style.display="none"; snap=null; $("freeze").textContent="❚❚"; S.bg=null; S.scale=null; Tracker.reset(); $("start").style.display="none"; $("stage").classList.add("live"); frozen=false; result=null; if(!goLive.on){goLive.on=1;requestAnimationFrame(loop);} }
+function stopSorter(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} mode=null; $("stage").classList.remove("live"); $("start").style.display="flex"; vctx.clearRect(0,0,view.width,view.height); }
+$("demoBtn").onclick=()=>{ if(!demoScene) demoScene=makeDemoScene(SET); mode="demo"; goLive(); };
+$("camBtn").onclick=async()=>{ $("camErr").textContent="";
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false});
+    video.srcObject=stream; await video.play(); mode="cam"; goLive(); }
+  catch(e){ $("camErr").textContent="The camera only works when the app is opened directly in a browser over https. You can use the demo pile for now."; } };
+
+/* role switch & reset */
+$("roleBuyer").onclick=()=>{st.role="buyer";st.tab="orders";if(!st.orders.length)st.tab="discover";render();};
+$("roleSeller").onclick=()=>{st.role="seller";st.tab="requests";render();};
+$("resetDemo").onclick=()=>{st=fresh();selBag=1;stopSorter();render();toast("Demo reset");};
+if(/netlify\.app$/.test(location.hostname)){ $("nav").classList.add("hosted"); document.querySelector("main").classList.add("hosted"); }
+render();
+</script>
+<div class="lb" id="lb"><button class="x" aria-label="Close">×</button><img id="lbImg" alt=""><div class="cap" id="lbCap"></div></div>
+</body>
+</html>

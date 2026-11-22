@@ -1,0 +1,2 @@
+/lb/*  https://locabriques.fr/api/:splat  200
+/bk/*  https://api.brickognize.com/:splat  200
