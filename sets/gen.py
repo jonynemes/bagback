@@ -1,5 +1,5 @@
 import json, re
-raw=json.load(open('/home/claude/sets/raw.json'))
+raw=json.load(open('raw.json'))
 # BrickLink colour id -> (name, hex)
 BL={0:("Mixed","#9BA19D"),1:("White","#F4F4F4"),2:("Tan","#E4CD9E"),3:("Yellow","#F2CD37"),4:("Orange","#FE8A18"),5:("Red","#C91A09"),
 6:("Green","#237841"),7:("Blue","#0055BF"),11:("Black","#1B2A34"),12:("Trans-Clear","#E6EEF2"),13:("Trans-Black","#635F52"),14:("Trans-Dark Blue","#0020A0"),
@@ -76,4 +76,4 @@ missing=[c for c in used if c not in BL]; print("unmapped colours",missing)
 js="const BL_PALETTE="+json.dumps(pal)+";\nfor(const k in BL_PALETTE){PALETTE[k]=BL_PALETTE[k];PALETTE[k].lab=hexToLab(PALETTE[k].hex);}\n"
 js+="const REAL_SETS="+json.dumps([{"num":s["num"],"name":s["name"],"year":s["year"],"theme":s["theme"],"pieces":s["pieces"],"bagsN":s["bagsN"]} for s in out])+";\n"
 js+="const REAL_SET_DATA={"+",".join(f'"{s["num"]}":{{name:{json.dumps(s["name_full"])},note:"Real bag-by-bag inventory (Brick Bag Inventory).",items:{json.dumps(s["items"],separators=(",",":"))}}}' for s in out)+"};\n"
-open('/home/claude/sets/realsets.js','w').write(js); print(len(js))
+open('realsets.js','w').write(js); print(len(js))
