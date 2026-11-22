@@ -143,7 +143,7 @@ input[type=range]{width:100%;accent-color:var(--brand2)}
     <div class="logo"><i></i>Backpack</div>
     <div class="seg"><button id="roleBuyer" class="on">Buyer</button><button id="roleSeller">Seller</button></div>
   </div>
-  <div class="persona"><span id="persona"></span><a id="resetDemo">Reset demo</a></div>
+  <div class="persona"><span id="persona"></span><a id="authBtn">Sign in</a></div>
 </header>
 
 <main>
@@ -180,6 +180,13 @@ input[type=range]{width:100%;accent-color:var(--brand2)}
     <button class="btn ghost block" id="addShelf">+ Add a built set</button>
   </section>
 
+  <!-- signed-out placeholder for account views -->
+  <section class="view" data-view="signin">
+    <h2>Sign in to continue</h2>
+    <p class="sub">Your shelf, requests and orders are saved to your account and stay in sync on every device.</p>
+    <button class="btn pri block" id="signinBtn">Sign in with Google</button>
+  </section>
+
   <!-- SELLER: sort -->
   <section class="view" data-view="sort">
     <h2 id="sortTitle">Sort</h2>
@@ -204,7 +211,7 @@ input[type=range]{width:100%;accent-color:var(--brand2)}
     <button class="btn ok block" id="finishSort" style="margin-top:4px">Verify complete &amp; finish</button>
   </section>
 
-  <p class="foot">Prototype · demo users, prices and orders are made up · no real payments.<br>Backpack is not affiliated with the LEGO Group.</p>
+  <p class="foot">Prototype · prices are estimates · payments are simulated, no money moves.<br>Backpack is not affiliated with the LEGO Group.</p>
 </main>
 
 <nav id="nav"></nav>
@@ -512,7 +519,6 @@ function registerLiveSet(num,nm,year,items){
   const cols=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(e=>e[0]).filter(k=>!/Trans/.test(PALETTE[k].he)).slice(0,4);
   CATALOG.push({num,name:nm,theme:"LEGO",year,pieces,bagsN,price:Math.round(pieces*0.08+6),cols,parts:true,live:true});
   REAL_SETS.push({num,name:nm,year,theme:"",pieces,bagsN});
-  try{ for(const u of ["marco","jake"]) if(!st.shelves[u].includes(num)) st.shelves[u].push(num); }catch(e){}
 }
 function restoreLiveSets(){
   for(const num of LIVE_NUMS){ try{ const c=JSON.parse(localStorage.getItem("bp_set_"+num)||"null"); if(!c) continue;
@@ -581,18 +587,26 @@ const CATALOG=REAL_SETS.map(r=>{ const cnt={}; for(const it of REAL_SET_DATA[r.n
   return {num:r.num,name:r.name,theme:r.theme||"LEGO",year:r.year,pieces:r.pieces,bagsN:r.bagsN,price:Math.round(r.pieces*0.08+6),cols,parts:true}; });
 const SETS_BY_NUM={}; for(const r of REAL_SETS) SETS_BY_NUM[r.num]=REAL_SET_DATA[r.num];
 restoreLiveSets();
-const USERS={
-  emma:{name:"Emma R.",city:"Denver, CO"},
-  marco:{name:"Marco D.",city:"Denver, CO",mi:4},
-  jake:{name:"Jake T.",city:"Boulder, CO",mi:26},
-  priya:{name:"Priya S.",city:"Austin, TX",mi:770}
-};
+/* ===== people, shelves and orders: live from Firebase (module script at the end of the page) ===== */
+let USERS={};                       // uid -> {name, city, photo}, every signed-up user
 const FEE=0.10;
-const fresh=()=>({role:"buyer",tab:"discover",
-  shelves:{marco:["60362","31151","76398",...LIVE_NUMS],jake:["60362","60320","40487",...LIVE_NUMS],priya:["41422","31170","76426"]},
-  orders:[], seq:1041, activeOrder:null});
+const fresh=()=>({role:"buyer",tab:"discover",shelves:{},orders:[],activeOrder:null});
 let st=fresh();
-const ME_BUYER="emma", ME_SELLER="marco";
+let ME_BUYER=null, ME_SELLER=null;  // both are the signed-in user's uid (one account can buy and sell)
+const FB=()=>window.BP_FB;
+const who=uid=>USERS[uid]||{name:"Someone",city:""};
+const myShelf=()=>st.shelves[ME_SELLER]||[];
+function signIn(){ if(!FB()){toast("Still connecting…");return;} FB().signIn().catch(e=>{ if(!/popup-closed|cancelled/.test(e.code||"")) toast("Sign-in failed: "+(e.code||e.message)); }); }
+/* write an order change; the live listener re-renders when Firestore confirms (or reverts) it */
+function updOrder(o,patch,msg){ if(msg) toast(msg); FB().updateOrder(o.id,patch).catch(e=>toast("Couldn't save: "+(e.code||e.message))); }
+/* sets that live users reference but this device hasn't loaded yet (LocaBriques sets) */
+const setsPending=new Set();
+function ensureSets(nums){ for(const n of new Set(nums)) if(n&&!SETS_BY_NUM[n]&&!setsPending.has(n)){ setsPending.add(n);
+  loadLiveSet(n).then(refresh).catch(()=>{}); } }
+function refresh(){ if(st.tab==="sort") renderBags(); else render(true); }
+window.bpOnUser=uid=>{ ME_BUYER=ME_SELLER=uid; if(!uid){ const tab=st.tab; st=fresh(); st.tab=tab; USERS={}; } render(true); };
+window.bpOnUsers=(users,shelves)=>{ USERS=users; st.shelves=shelves; ensureSets(Object.values(shelves).flat()); refresh(); };
+window.bpOnOrders=list=>{ st.orders=list; ensureSets(list.map(o=>o.set)); refresh(); };
 const $=id=>document.getElementById(id);
 const setOf=n=>CATALOG.find(s=>s.num===n);
 const money=v=>"$"+(Math.round(v*100)/100).toFixed(v%1?2:0);
@@ -629,13 +643,16 @@ function thumb(set){
   ps.sort((a,b)=>a.y-b.y); ps.forEach(p=>drawPiece(x,p,17));
   return thumbCache[set.num]=c.toDataURL();
 }
-const owners=num=>Object.entries(st.shelves).filter(([u,l])=>l.includes(num)).map(([u])=>u).sort((a,b)=>USERS[a].mi-USERS[b].mi);
+/* owners of a set other than me; people in my city first */
+const sameCity=u=>{ const a=(who(u).city||"").trim().toLowerCase(), b=(who(ME_BUYER).city||"").trim().toLowerCase(); return a&&a===b?1:0; };
+const owners=num=>Object.entries(st.shelves).filter(([u,l])=>u!==ME_BUYER&&l.includes(num)).map(([u])=>u).sort((a,b)=>sameCity(b)-sameCity(a));
 
 /* ===== rendering ===== */
-function render(){
+function render(keepScroll){
   $("roleBuyer").classList.toggle("on",st.role==="buyer"); $("roleSeller").classList.toggle("on",st.role==="seller");
-  const me=st.role==="buyer"?USERS[ME_BUYER]:USERS[ME_SELLER];
-  $("persona").textContent=`Signed in as ${me.name} · ${me.city}`;
+  const me=ME_BUYER?who(ME_BUYER):null;
+  $("persona").textContent=me?`Signed in as ${me.name}${me.city?" · "+me.city:""}`:"Not signed in";
+  $("authBtn").textContent=me?"Sign out":"Sign in";
   const tabs = st.role==="buyer"
     ? [["discover","🔍","Discover"],["orders","🧾","My orders"]]
     : [["sort","📷","Scan & sort"],["requests","📬","Requests"],["shelf","🗄️","My shelf"]];
@@ -645,23 +662,25 @@ function render(){
   $("nav").innerHTML=tabs.map(([k,ic,l])=>{const b=k==="requests"?reqCount:k==="orders"?ordCount:0;
     return `<button data-tab="${k}" class="${k===st.tab?"on":""}"><span class="ic">${ic}</span>${l}${b?`<span class="badge">${b}</span>`:""}</button>`;}).join("");
   $("nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{st.tab=b.dataset.tab;render();});
-  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on",v.dataset.view===st.tab));
-  ({discover:rDiscover,orders:rOrders,requests:rRequests,shelf:rShelf,sort:rSort})[st.tab]();
+  const view=(!ME_BUYER&&["orders","requests","shelf"].includes(st.tab))?"signin":st.tab;
+  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on",v.dataset.view===view));
+  if(view!=="signin") ({discover:rDiscover,orders:rOrders,requests:rRequests,shelf:rShelf,sort:rSort})[view]();
   if(st.tab!=="sort") stopSorter();
-  window.scrollTo(0,0);
+  if(!keepScroll) window.scrollTo(0,0);
 }
+$("signinBtn").onclick=signIn;
 function guide(id,html){$(id).innerHTML=html?`<b>Demo ›</b><span>${html}</span>`:""; $(id).style.display=html?"flex":"none";}
 
 function rDiscover(){
   const q=$("search").value.trim().toLowerCase();
   const list=CATALOG.filter(s=>!q||(/^\d+$/.test(q)?s.num.startsWith(q):(s.name.toLowerCase().includes(q)||s.num.startsWith(q))));
-  guide("g-discover", st.orders.length? "" : "You are Emma, a buyer in Denver. Tap <b>Want this</b> on <b>Car Wash</b> to start.");
+  guide("g-discover", ME_BUYER? "" : "<b>Sign in</b> (top right) to see who owns each set, ask for one, or list your own.");
   $("catalog").innerHTML=list.map(s=>{
     const o=owners(s.num), mine=st.orders.find(x=>x.set===s.num&&x.buyer===ME_BUYER&&x.status!=="completed");
-    const near=o.filter(u=>USERS[u].mi<100).length;
+    const near=o.filter(sameCity).length;
     return `<div class="card"><div class="setrow"><img class="thumb" ${imgAttrs(s)} alt="">
-      <div class="meta"><div class="t">${s.name}</div><div class="s">${s.num} · ${s.theme} · ${s.pieces.toLocaleString()} pcs · ${s.year}</div>
-      ${o.length?`<span class="pill">● ${o.length} owner${o.length>1?"s have":" has"} it built${near?` · ${near} near you`:""}</span>`:`<span class="pill gray">No owners yet · we'll alert them</span>`}</div></div>
+      <div class="meta"><div class="t">${esc(s.name)}</div><div class="s">${s.num} · ${s.theme} · ${s.pieces.toLocaleString()} pcs · ${s.year}</div>
+      ${o.length?`<span class="pill">● ${o.length} owner${o.length>1?"s have":" has"} it built${near?` · ${near} in your city`:""}</span>`:`<span class="pill gray">No owners yet · we'll alert them</span>`}</div></div>
       <div class="actions"><div style="flex:1;align-self:center"><div class="s" style="font-size:12px;color:var(--mut)">Typical price</div><div class="price">${money(s.price)}</div></div>
       ${mine?`<button class="btn ghost" data-go="orders">View order</button>`:`<button class="btn pri" data-want="${s.num}">Want this</button>`}</div></div>`;}).join("")||(/^\d{4,6}$/.test(q)?"":`<div class="empty">No sets match “${q}”.</div>`);
   if(/^\d{4,6}$/.test(q)&&!CATALOG.some(s=>s.num===q)) $("catalog").innerHTML+=`<div class="card" style="text-align:center"><div class="t" style="font-weight:700;margin-bottom:4px">Set ${q} isn't in the demo yet</div><div class="s" style="color:var(--mut);margin-bottom:10px">Load its real bag-by-bag inventory from the LocaBriques library (1,700+ sets).</div><button class="btn pri" id="liveLoad">Load set ${q}</button></div>`;
@@ -677,22 +696,24 @@ document.addEventListener("click",e=>{ if(!e.target.closest(".acwrap")) $("ac").
 
 let wishSet=null;
 function openWish(num){
+  if(!ME_BUYER){ signIn(); return; }
   wishSet=setOf(num);
   $("wTitle").textContent=`${wishSet.name} (${wishSet.num})`;
-  const o=owners(num);
-  $("wSub").textContent=o.length?`${o.length} owner${o.length>1?"s":""} in the US have it built. The nearest is ${USERS[o[0]].mi} miles away.`:"Nobody has it listed yet. We'll ask owners who match.";
+  const o=owners(num), first=o.length?who(o[0]):null;
+  $("wSub").textContent=o.length?`${o.length} owner${o.length>1?"s have":" has"} it built. We'll ask ${first.name}${first.city?" ("+first.city+")":""} first.`:"Nobody has it listed yet. It stays on your wishlist until an owner shows up.";
   const r=$("wPrice"); r.min=Math.round(wishSet.price*0.6); r.max=Math.round(wishSet.price*1.5); r.value=wishSet.price;
   $("wPriceV").textContent=money(wishSet.price); r.oninput=()=>$("wPriceV").textContent=money(+r.value);
-  $("wShip").textContent=USERS[ME_BUYER].city;
+  $("wShip").textContent=who(ME_BUYER).city||"—";
   openM("wishModal");
 }
 $("wCancel").onclick=()=>closeM("wishModal");
-$("wGo").onclick=()=>{
+$("wGo").onclick=async()=>{
   const price=+$("wPrice").value, o=owners(wishSet.num), seller=o[0]||null;
-  const ord={id:++st.seq,set:wishSet.num,buyer:ME_BUYER,seller,price,status:seller?"matched":"waiting",bagsDone:[],t:Date.now()};
-  st.orders.unshift(ord); closeM("wishModal");
-  toast(seller?`Matched! Asking ${USERS[seller].name} (${USERS[seller].mi} mi away)`:"Added to wishlist. We'll notify owners.");
-  st.tab="orders"; render();
+  closeM("wishModal");
+  try{ await FB().createOrder({set:wishSet.num,seller,price,status:seller?"matched":"waiting"});
+    toast(seller?`Matched! Asking ${who(seller).name}`:"Added to your wishlist.");
+    st.tab="orders"; render();
+  }catch(e){ toast("Couldn't save the order: "+(e.code||e.message)); }
 };
 
 function timeline(o){
@@ -705,83 +726,89 @@ const bagCount=o=>{const d=SETS_BY_NUM[o.set]; return d?new Set(d.items.map(i=>+
 function money3(o){const fee=o.price*FEE;return {fee,payout:o.price-fee};}
 
 function rOrders(){
-  const mine=st.orders.filter(o=>o.buyer===ME_BUYER);
+  const mine=st.orders.filter(o=>o.buyer===ME_BUYER&&setOf(o.set));
   const next=mine.find(o=>o.status!=="completed");
   let g="";
   if(!mine.length) g="No orders yet. Go to <b>Discover</b> and tap <b>Want this</b>.";
-  else if(next&&next.status==="matched") g="Now switch to <b>Seller</b> (top right). You'll be Marco, the owner who has this set built.";
-  else if(next&&next.status==="accepted") g="Marco accepted. Tap <b>Pay</b>. The money is held until you confirm the set arrived complete.";
-  else if(next&&(next.status==="paid"||next.status==="sorting"||next.status==="verified")) g="Switch to <b>Seller</b> to take the set apart and sort it with the scanner.";
-  else if(next&&next.status==="shipped") g="The set is on its way. Tap <b>Confirm received</b> to release the payment to Marco.";
+  else if(next&&next.status==="matched") g="Waiting for the owner to accept your request.";
+  else if(next&&next.status==="accepted") g="The owner accepted. Tap <b>Pay</b>. The money is held until you confirm the set arrived complete.";
+  else if(next&&(next.status==="paid"||next.status==="sorting"||next.status==="verified")) g="The owner is taking the set apart and sorting it into its bags.";
+  else if(next&&next.status==="shipped") g="The set is on its way. Tap <b>Confirm received</b> to release the payment.";
   else if(mine[0]&&mine[0].status==="completed") g="That's the whole loop: buyer → match → sort → verify → ship → payout. 🎉";
   guide("g-orders",g);
-  $("orderList").innerHTML=mine.map(o=>{const s=setOf(o.set), sel=o.seller?USERS[o.seller]:null;
+  $("orderList").innerHTML=mine.map(o=>{const s=setOf(o.set), sel=o.seller?who(o.seller):null;
     let act="";
     if(o.status==="accepted") act=`<button class="btn pri block" data-pay="${o.id}">Pay ${money(o.price)} · held until you confirm</button>`;
     if(o.status==="shipped") act=`<button class="btn ok block" data-recv="${o.id}">Confirm received, complete</button>`;
     return `<div class="card"><div class="setrow"><img class="thumb" ${imgAttrs(s)} alt="">
-      <div class="meta"><div class="t">${s.name}</div><div class="s">Order #${o.id} · max ${money(o.price)}</div>
-      ${sel?`<span class="pill blue">Seller: ${sel.name} · ${sel.mi} mi</span>`:`<span class="pill gray">Waiting for an owner</span>`}</div></div>
+      <div class="meta"><div class="t">${esc(s.name)}</div><div class="s">Order #${o.no} · max ${money(o.price)}</div>
+      ${sel?`<span class="pill blue">Seller: ${esc(sel.name)}${sel.city?" · "+esc(sel.city):""}</span>`:`<span class="pill gray">Waiting for an owner</span>`}</div></div>
       ${o.status!=="waiting"?timeline(o):""}${act}</div>`;}).join("")||`<div class="empty">Your wishlist is empty.</div>`;
-  $("orderList").querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.pay);o.status="paid";toast("Payment held by Backpack (demo). Marco can start sorting.");render();});
-  $("orderList").querySelectorAll("[data-recv]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.recv);o.status="completed";toast(`Payment released to ${USERS[o.seller].name}`);render();});
+  $("orderList").querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.pay);updOrder(o,{status:"paid"},"Payment held by Backpack (simulated). The owner can start sorting.");});
+  $("orderList").querySelectorAll("[data-recv]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.recv);updOrder(o,{status:"completed"},`Payment released to ${who(o.seller).name}`);});
 }
 
 function rRequests(){
-  const mine=st.orders.filter(o=>o.seller===ME_SELLER);
+  const mine=st.orders.filter(o=>o.seller===ME_SELLER&&setOf(o.set));
   const n=mine.find(o=>o.status!=="completed");
   let g="";
-  if(!mine.length) g="No requests yet. Switch to <b>Buyer</b> and ask for <b>Car Wash</b>. Marco has it on his shelf.";
-  else if(n&&n.status==="matched") g="Emma wants your set. Tap <b>Accept</b>.";
-  else if(n&&n.status==="accepted") g="Waiting for Emma to pay. Switch to <b>Buyer</b> and tap <b>Pay</b>.";
+  if(!mine.length) g="No requests yet. Add the sets you have built to <b>My shelf</b> so buyers can find you.";
+  else if(n&&n.status==="matched") g=`${esc(who(n.buyer).name)} wants your set. Tap <b>Accept</b>.`;
+  else if(n&&n.status==="accepted") g="Waiting for the buyer to pay.";
   else if(n&&(n.status==="paid"||n.status==="sorting")) g="Paid. Tap <b>Take apart &amp; sort</b> to open the scanner.";
   else if(n&&n.status==="verified") g="Verified complete. Tap <b>Print shipping label</b>.";
-  else if(n&&n.status==="shipped") g="Shipped. Switch to <b>Buyer</b> to confirm it arrived.";
+  else if(n&&n.status==="shipped") g="Shipped. Waiting for the buyer to confirm it arrived.";
   guide("g-requests",g);
-  $("reqList").innerHTML=mine.map(o=>{const s=setOf(o.set), b=USERS[o.buyer], m=money3(o);
+  $("reqList").innerHTML=mine.map(o=>{const s=setOf(o.set), b=who(o.buyer), m=money3(o);
     let act="";
     if(o.status==="matched") act=`<div class="actions"><button class="btn ghost" data-dec="${o.id}">Decline</button><button class="btn pri" data-acc="${o.id}">Accept</button></div>`;
     if(o.status==="paid"||o.status==="sorting") act=`<button class="btn dark block" style="margin-top:10px" data-sort="${o.id}">📷 Take apart &amp; sort</button>`;
     if(o.status==="verified") act=`<button class="btn pri block" style="margin-top:10px" data-ship="${o.id}">Print shipping label</button>`;
     return `<div class="card"><div class="setrow"><img class="thumb" ${imgAttrs(s)} alt="">
-      <div class="meta"><div class="t">${b.name} wants your ${s.name}</div><div class="s">${s.num} · ${b.city} · ${USERS[ME_SELLER].mi} mi away</div>
-      <span class="pill amber">Order #${o.id}</span></div></div>
+      <div class="meta"><div class="t">${esc(b.name)} wants your ${esc(s.name)}</div><div class="s">${s.num}${b.city?" · "+esc(b.city):""}</div>
+      <span class="pill amber">Order #${o.no}</span></div></div>
       <div class="hr"></div>
       <div class="kv"><span>Buyer pays</span><b>${money(o.price)}</b></div>
       <div class="kv"><span>Backpack fee (10%)</span><b>−${money(m.fee)}</b></div>
       <div class="kv"><span>You get</span><b style="color:var(--ok)">${money(m.payout)}</b></div>
       ${o.status!=="matched"?timeline(o):""}${act}</div>`;}).join("")||`<div class="empty">No requests yet.</div>`;
   const q=a=>$("reqList").querySelectorAll(a);
-  q("[data-acc]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.acc);o.status="accepted";toast("Accepted. Emma has been asked to pay.");render();});
+  q("[data-acc]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.acc);updOrder(o,{status:"accepted"},"Accepted. The buyer has been asked to pay.");});
   q("[data-dec]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.dec);
-    const others=owners(o.set).filter(u=>u!==ME_SELLER); o.seller=others[0]||null; o.status=o.seller?"matched":"waiting";
-    toast(o.seller?`Declined. Emma's request moves to ${USERS[o.seller].name}.`:"Declined.");render();});
-  q("[data-sort]").forEach(b=>b.onclick=()=>{st.activeOrder=+b.dataset.sort;st.tab="sort";render();});
-  q("[data-ship]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.ship);o.status="shipped";toast("Label created (demo). Drop it off at the post office.");render();});
+    const next=owners(o.set).find(u=>u!==o.buyer)||null;
+    updOrder(o,{seller:next,status:next?"matched":"waiting"},next?`Declined. The request moves to ${who(next).name}.`:"Declined.");});
+  q("[data-sort]").forEach(b=>b.onclick=()=>{st.activeOrder=b.dataset.sort;st.tab="sort";render();});
+  q("[data-ship]").forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id==b.dataset.ship);updOrder(o,{status:"shipped"},"Label created (demo). Drop it off at the post office.");});
 }
 
 function rShelf(){
-  const l=st.shelves[ME_SELLER];
-  $("shelfList").innerHTML=l.map(n=>{const s=setOf(n), busy=st.orders.find(o=>o.seller===ME_SELLER&&o.set===n&&o.status!=="completed");
-    return `<div class="card"><div class="setrow"><img class="thumb" ${imgAttrs(s)} alt=""><div class="meta"><div class="t">${s.name}</div><div class="s">${s.num} · ${s.pieces.toLocaleString()} pcs</div>
+  const l=myShelf();
+  $("shelfList").innerHTML=l.filter(setOf).map(n=>{const s=setOf(n), busy=st.orders.find(o=>o.seller===ME_SELLER&&o.set===n&&o.status!=="completed");
+    return `<div class="card"><div class="setrow"><img class="thumb" ${imgAttrs(s)} alt=""><div class="meta"><div class="t">${esc(s.name)}</div><div class="s">${s.num} · ${s.pieces.toLocaleString()} pcs</div>
     ${busy?`<span class="pill amber">In an order</span>`:`<span class="pill gray">On display · typical ${money(s.price)}</span>`}
-    ${s.parts?`<span class="pill blue">${s.bagsN} bags mapped</span>`:""}</div></div></div>`;}).join("")||`<div class="empty">Nothing on your shelf yet.</div>`;
+    ${s.parts?`<span class="pill blue">${s.bagsN} bags mapped</span>`:""}</div></div>
+    ${busy?"":`<div class="actions"><button class="btn ghost" data-rm="${n}">Remove from shelf</button></div>`}</div>`;}).join("")||`<div class="empty">Nothing on your shelf yet.</div>`;
+  $("shelfList").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{
+    FB().setShelf(myShelf().filter(x=>x!==b.dataset.rm)).then(()=>toast("Removed from your shelf")).catch(e=>toast("Couldn't save: "+(e.code||e.message))); });
 }
 $("addShelf").onclick=()=>{
-  const l=st.shelves[ME_SELLER];
-  $("shelfPick").innerHTML=CATALOG.filter(s=>!l.includes(s.num)).map(s=>`<div class="card setrow" style="cursor:pointer" data-add="${s.num}"><img class="thumb" ${imgAttrs(s)} alt=""><div class="meta"><div class="t">${s.name}</div><div class="s">${s.num}</div></div></div>`).join("")||`<div class="empty">All demo sets added.</div>`;
-  $("shelfPick").querySelectorAll("[data-add]").forEach(d=>d.onclick=()=>{l.push(d.dataset.add);closeM("shelfModal");toast("Added to your shelf");render();});
+  if(!ME_SELLER){ signIn(); return; }
+  const l=myShelf();
+  $("shelfPick").innerHTML=CATALOG.filter(s=>!l.includes(s.num)).map(s=>`<div class="card setrow" style="cursor:pointer" data-add="${s.num}"><img class="thumb" ${imgAttrs(s)} alt=""><div class="meta"><div class="t">${esc(s.name)}</div><div class="s">${s.num}</div></div></div>`).join("")||`<div class="empty">All sets added. Load more sets by number in Discover.</div>`;
+  $("shelfPick").querySelectorAll("[data-add]").forEach(d=>d.onclick=()=>{ closeM("shelfModal");
+    FB().setShelf([...myShelf(),d.dataset.add]).then(()=>toast("Added to your shelf")).catch(e=>toast("Couldn't save: "+(e.code||e.message))); });
   openM("shelfModal");
 };
 $("sCancel").onclick=()=>closeM("shelfModal");
 
 /* ===== sort tab ===== */
-function curOrder(){return st.orders.find(o=>o.id===st.activeOrder)||st.orders.find(o=>o.seller===ME_SELLER&&(o.status==="paid"||o.status==="sorting"));}
+function curOrder(){ if(!ME_SELLER) return null; const sortable=o=>o.seller===ME_SELLER&&(o.status==="paid"||o.status==="sorting")&&SETS_BY_NUM[o.set];
+  return st.orders.find(o=>o.id===st.activeOrder&&sortable(o))||st.orders.find(sortable);}
 function rSort(){
   const o=curOrder();
   if(o&&SETS_BY_NUM[o.set]&&SET!==SETS_BY_NUM[o.set]) useSet(SETS_BY_NUM[o.set]);
-  if(o){ const s=setOf(o.set); $("sortTitle").textContent=`Sort · ${s.name}`; $("sortSub").textContent=`Order #${o.id} for ${USERS[o.buyer].name.replace(/\.$/,"")}. Pick a bag, sweep the phone over the pile, and bag the highlighted pieces.`;
-    if(o.status==="paid") o.status="sorting"; }
+  if(o){ const s=setOf(o.set); $("sortTitle").textContent=`Sort · ${s.name}`; $("sortSub").textContent=`Order #${o.no} for ${who(o.buyer).name}. Pick a bag, sweep the phone over the pile, and bag the highlighted pieces.`;
+    if(o.status==="paid"&&!o._startReq){ o._startReq=true; updOrder(o,{status:"sorting"}); } }
   else { $("sortTitle").textContent="Sort"; $("sortSub").textContent="Practice mode. Pick one of 10 real LEGO sets below: the demo pile is that set's real pieces, sorted by its real bags."; }
   renderBags();
 }
@@ -809,13 +836,15 @@ function renderBags(){
       <div class="parts">${items.map(i=>`<span><i class="sw" style="background:${PALETTE[i.color].hex}"></i>${EN[i.color]||PALETTE[i.color].he} ${i.desc} ×${i.qty}</span>`).join("")}</div></div></div>
       <button class="btn ${isDone?"ghost":"dark"} block" style="margin-top:12px" id="bagDone">${isDone?"✓ Bag "+selBag+" sorted · undo":"Mark bag "+selBag+" as sorted"}</button>`;
     $("bagDone").onclick=()=>{ if(!o){toast("Practice mode: nothing to save");return;}
-      if(isDone) o.bagsDone=o.bagsDone.filter(x=>x!==selBag); else {o.bagsDone.push(selBag); const nx=bags().find(b=>!o.bagsDone.includes(b)); if(nx){selBag=nx; toast(`Bag ${o.bagsDone.slice(-1)[0]} done. Next: bag ${nx}`);} else toast("All bags sorted!");}
+      const was=selBag, nd=isDone?o.bagsDone.filter(x=>x!==was):[...o.bagsDone,was];
+      if(!isDone){ const nx=bags().find(b=>!nd.includes(b)); if(nx){selBag=nx; toast(`Bag ${was} done. Next: bag ${nx}`);} else toast("All bags sorted!"); }
+      updOrder(o,{bagsDone:nd});
       renderBags(); if(result){labelComps(result);buildOverlay();} };
   }
   const all=o&&bags().every(b=>o.bagsDone.includes(b));
   $("finishSort").disabled=!all; $("finishSort").style.display=o?"flex":"none";
 }
-$("finishSort").onclick=()=>{const o=curOrder(); if(!o) return; o.status="verified"; toast("Verified complete ✓ Ready to ship"); st.tab="requests"; render();};
+$("finishSort").onclick=()=>{const o=curOrder(); if(!o) return; updOrder(o,{status:"verified"},"Verified complete ✓ Ready to ship"); st.tab="requests"; render();};
 
 /* scanner plumbing */
 let SET=SETS_BY_NUM["60362"], refs={}, selBag=1, opt={thr:18,minArea:22}, result=null, frozen=false, mode=null, stream=null, lastT=0, demoScene=null;
@@ -1129,10 +1158,64 @@ $("camBtn").onclick=async()=>{ $("camErr").textContent="";
 /* role switch & reset */
 $("roleBuyer").onclick=()=>{st.role="buyer";st.tab="orders";if(!st.orders.length)st.tab="discover";render();};
 $("roleSeller").onclick=()=>{st.role="seller";st.tab="requests";render();};
-$("resetDemo").onclick=()=>{st=fresh();selBag=1;stopSorter();render();toast("Demo reset");};
+$("authBtn").onclick=()=>{ if(ME_BUYER){ if(FB()) FB().signOut(); } else signIn(); };
 if(/netlify\.app$/.test(location.hostname)){ $("nav").classList.add("hosted"); document.querySelector("main").classList.add("hosted"); }
 render();
 </script>
 <div class="lb" id="lb"><button class="x" aria-label="Close">×</button><img id="lbImg" alt=""><div class="cap" id="lbCap"></div></div>
+
+<!-- ===== Firebase: Google sign-in + Firestore (users with shelves, orders). Access is enforced by firestore.rules. ===== -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, addDoc, updateDoc, collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+// Public web config (not a secret; security comes from firestore.rules)
+const app = initializeApp({
+  apiKey: "AIzaSyBQSLB6sL6q6ugwEpotkNY5N5TlwdXVXdI",
+  authDomain: "bagback-92fb6.firebaseapp.com",
+  projectId: "bagback-92fb6",
+  storageBucket: "bagback-92fb6.firebasestorage.app",
+  messagingSenderId: "572678850634",
+  appId: "1:572678850634:web:7013bee5daa014ff83beb3"
+});
+const auth = getAuth(app), db = getFirestore(app);
+const uid = () => auth.currentUser.uid;
+
+window.BP_FB = {
+  signIn: () => signInWithPopup(auth, new GoogleAuthProvider()),
+  signOut: () => signOut(auth),
+  setShelf: list => updateDoc(doc(db, "users", uid()), { shelf: [...new Set(list)] }),
+  createOrder: o => addDoc(collection(db, "orders"), {
+    set: o.set, seller: o.seller, price: o.price, status: o.status,
+    buyer: uid(), bagsDone: [], t: Date.now(), no: Math.floor(1000 + Math.random() * 9000) }),
+  updateOrder: (id, patch) => updateDoc(doc(db, "orders", id), patch),
+};
+
+let unsub = [];
+onAuthStateChanged(auth, async user => {
+  unsub.forEach(f => f()); unsub = [];
+  if (!user) { window.bpOnUser(null); return; }
+  try {
+    const ref = doc(db, "users", user.uid);
+    if (!(await getDoc(ref)).exists()) {
+      const city = (prompt("Which city are you in? Buyers and sellers will see it.") || "").trim().slice(0, 80);
+      await setDoc(ref, { name: (user.displayName || "LEGO fan").slice(0, 80), city, photo: user.photoURL || "", shelf: [], t: Date.now() });
+    }
+  } catch (e) { console.error("profile", e); toast("Couldn't load your profile: " + (e.code || e.message)); }
+  window.bpOnUser(user.uid);
+  unsub.push(onSnapshot(collection(db, "users"), qs => {
+    const users = {}, shelves = {};
+    qs.forEach(d => { const x = d.data(); users[d.id] = { name: x.name, city: x.city || "", photo: x.photo || "" }; shelves[d.id] = x.shelf || []; });
+    window.bpOnUsers(users, shelves);
+  }, e => console.error("users", e)));
+  const mine = { buyer: [], seller: [] };
+  for (const f of ["buyer", "seller"]) unsub.push(onSnapshot(query(collection(db, "orders"), where(f, "==", user.uid)), qs => {
+    mine[f] = qs.docs.map(d => ({ id: d.id, ...d.data() }));
+    const m = new Map(); [...mine.buyer, ...mine.seller].forEach(o => m.set(o.id, o));
+    window.bpOnOrders([...m.values()].sort((a, b) => b.t - a.t));
+  }, e => console.error("orders " + f, e)));
+});
+</script>
 </body>
 </html>

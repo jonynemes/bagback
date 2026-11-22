@@ -1,0 +1,59 @@
+rules_version = '2';
+// Backpack (bagback) Firestore security rules.
+// Paste into Firebase console > Firestore Database > Rules, then Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    // One profile per user: public to signed-in users (name, city, shelf), editable only by its owner.
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['name', 'city', 'photo', 'shelf', 't'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 80
+        && request.resource.data.city is string && request.resource.data.city.size() <= 80
+        && request.resource.data.shelf is list && request.resource.data.shelf.size() <= 500;
+      allow delete: if false;
+    }
+
+    // Orders: visible only to their buyer and current seller; each side may only make its own moves.
+    match /orders/{orderId} {
+      function d() { return resource.data; }
+      function n() { return request.resource.data; }
+      function changed() { return n().diff(d()).affectedKeys(); }
+      function move(a, b) { return d().status == a && n().status == b; }
+      function isBuyer() { return request.auth.uid == d().buyer; }
+      function isSeller() { return d().seller != null && request.auth.uid == d().seller; }
+
+      allow read: if signedIn() && (isBuyer() || isSeller());
+
+      allow create: if signedIn()
+        && n().keys().hasOnly(['set', 'buyer', 'seller', 'price', 'status', 'bagsDone', 't', 'no'])
+        && n().buyer == request.auth.uid
+        && n().set is string && n().price is number && n().no is number && n().t is number
+        && n().bagsDone == []
+        && ((n().seller == null && n().status == 'waiting')
+            || (n().seller is string && n().seller != request.auth.uid && n().status == 'matched'));
+
+      allow update: if signedIn() && (
+        // buyer: pay after the owner accepts, confirm when it arrives
+        (isBuyer() && changed().hasOnly(['status'])
+          && (move('accepted', 'paid') || move('shipped', 'completed')))
+        // seller: accept, start sorting, verify, ship
+        || (isSeller() && changed().hasOnly(['status'])
+          && (move('matched', 'accepted') || move('paid', 'sorting')
+              || move('sorting', 'verified') || move('verified', 'shipped')))
+        // seller: tick bags while sorting
+        || (isSeller() && changed().hasOnly(['bagsDone'])
+          && d().status == 'sorting' && n().bagsDone is list && n().bagsDone.size() <= 100)
+        // seller: decline, passing the request to another owner (or back to the wishlist)
+        || (isSeller() && changed().hasOnly(['seller', 'status']) && d().status == 'matched'
+          && ((n().seller == null && n().status == 'waiting')
+              || (n().seller is string && n().seller != d().buyer && n().seller != d().seller && n().status == 'matched')))
+      );
+
+      allow delete: if false;
+    }
+  }
+}

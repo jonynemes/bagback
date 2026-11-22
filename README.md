@@ -35,3 +35,15 @@ python gen.py
 ```
 
 הפקודה מייצרת מחדש את `realsets.js`. את התוכן שלו (`BL_PALETTE`, `REAL_SETS`, `REAL_SET_DATA`) מעתיקים ידנית לתוך `bagback/site/index.html`, במקום הבלוק הקיים.
+
+## Firebase
+
+הפרויקט ב-Firebase הוא `bagback-92fb6`. משתמשים בו רק למסד הנתונים ולכניסה עם Google. האתר עצמו מתפרסם ב-Netlify.
+
+- **כניסה:** עם Google. ההגדרות נמצאות בסוף `bagback/site/index.html`, והן ציבוריות ולא סודיות.
+- **`users/{uid}`:** פרופיל המשתמש: שם, עיר, תמונה ו-`shelf`, רשימת מספרי הסטים שיש לו בנויים.
+- **`orders/{id}`:** הזמנה בין קונה לבעלים: `set`, `buyer`, `seller`, `price`, `status`, `bagsDone`.
+- **חוקי גישה:** `firestore.rules`. אחרי כל שינוי מדביקים אותם ב-Firebase console, תחת Firestore Database ואז Rules, ולוחצים Publish.
+- **דומיין חדש:** כשהאתר מתפרסם בדומיין חדש, מוסיפים אותו ב-Authentication, תחת Settings ואז Authorized domains.
+
+התשלום מדומה: הסטטוס `paid` לא מעביר כסף.

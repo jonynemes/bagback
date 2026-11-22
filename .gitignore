@@ -16,3 +16,7 @@ __pycache__/
 .netlify/
 .firebase/
 *.log
+
+# Firebase admin keys
+secrets/
+*serviceAccount*.json
