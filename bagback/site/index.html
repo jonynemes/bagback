@@ -119,6 +119,11 @@ input[type=range]{width:100%;accent-color:var(--brand2)}
 .live .shud{display:flex}
 .chip{background:#ffffff22;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid #ffffff2a;color:#fff;padding:7px 12px;border-radius:999px;font-size:13px;font-weight:600}
 .setswitch{display:flex;gap:8px;margin-top:12px}
+.setbar{flex:1;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.setbar .t{font-weight:800;font-size:14px}.setbar .s{font-size:12px;color:var(--mut)}
+h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:22px 0 8px}
+.pickset .go{margin-left:auto;font-size:26px;color:var(--mut);padding:0 4px}
+[data-view=home] .search{font-size:17px;padding:16px}
 .setswitch select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;font:inherit;font-weight:700;font-size:14px}
 .setswitch button.on{background:var(--ink);color:#fff}
 .bagchips{display:flex;gap:8px;overflow-x:auto;padding:12px 2px 4px;scrollbar-width:none}
@@ -158,12 +163,21 @@ input[type=range]{width:100%;accent-color:var(--brand2)}
 <header>
   <div class="hrow">
     <div class="logo"><i></i>Backpack</div>
-    <div class="seg"><button id="roleBuyer" class="on">Buyer</button><button id="roleSeller">Seller</button></div>
+    <div class="seg"><button id="roleSort" class="on">Sort</button><button id="roleBuyer">Buy</button><button id="roleSeller">Sell</button></div>
   </div>
   <div class="persona"><span id="persona"></span><a id="authBtn">Sign in</a></div>
 </header>
 
 <main>
+  <!-- SORT: home = find the set you're sorting -->
+  <section class="view" data-view="home">
+    <h2>Which set are you sorting?</h2>
+    <p class="sub">Search by set number or name. We have the bag-by-bag parts list for 1,700+ LEGO sets. Then point your camera at the pile and we'll show which pieces go in each bag.</p>
+    <div class="acwrap"><input class="search" id="hsearch" placeholder="Set number or name, e.g. 76408 or Hogwarts" autocomplete="off" inputmode="search" enterkeyhint="search"><div class="ac" id="hac"></div></div>
+    <div id="homeRecent"></div>
+    <div id="homeDemo"></div>
+  </section>
+
   <!-- BUYER: discover -->
   <section class="view" data-view="discover">
     <h2>Find a set, complete.</h2>
@@ -570,8 +584,9 @@ function acMatches(q){
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function mark(text,q,prefix){ const t=String(text), i=prefix?(t.toLowerCase().startsWith(q.toLowerCase())?0:-1):t.toLowerCase().indexOf(q.toLowerCase());
   return i<0?esc(t):esc(t.slice(0,i))+`<b class="hl">${esc(t.slice(i,i+q.length))}</b>`+esc(t.slice(i+q.length)); }
-function acRender(){
-  const q=$("search").value.trim(), box=$("ac");
+function acRender(){ acRenderFor("search","ac",acPick); }
+function acRenderFor(inp,bx,pick){
+  const q=$(inp).value.trim(), box=$(bx);
   if(!q){ box.classList.remove("on"); box.innerHTML=""; return; }
   const all=acMatches(q), m=all.slice(0,30), isNum=/^\d+$/.test(q);
   let h=all.length?`<div class="hint cnt"><b>${all.length.toLocaleString()}</b> set${all.length>1?"s":""} ${isNum?`starting with <b>${esc(q)}</b>`:`matching “${esc(q)}”`}${all.length>m.length?` · keep typing to narrow`:""}</div>`:"";
@@ -579,8 +594,29 @@ function acRender(){
   if(!LIB) h+=`<div class="hint">${libLoading?"Loading the library of 1,700+ sets…":"Library unavailable right now. Showing demo sets only."}</div>`;
   else if(!all.length) h=`<div class="hint">No set ${isNum?"starts with":"matches"} “${esc(q)}” in the library.</div>`;
   box.innerHTML=h; box.classList.add("on");
-  box.querySelectorAll(".it").forEach(el=>el.onclick=()=>acPick(el.dataset.num,el.dataset.url));
+  box.querySelectorAll(".it").forEach(el=>el.onclick=()=>pick(el.dataset.num,el.dataset.url));
 }
+
+/* ===== home: find the set you're sorting, then go straight to the scanner ===== */
+const RECENT_KEY="bp_recent";
+const recentSets=()=>{ try{ const a=JSON.parse(localStorage.getItem(RECENT_KEY)||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } };
+function rememberSet(num){ try{ localStorage.setItem(RECENT_KEY,JSON.stringify([num,...recentSets().filter(n=>n!==num)].slice(0,8))); }catch(e){} }
+function setCard(s){ return `<div class="card setrow pickset" data-num="${s.num}" style="cursor:pointer"><img class="thumb" ${imgAttrs(s)} alt="">
+  <div class="meta"><div class="t">${esc(s.name)}</div><div class="s">${s.num} · ${s.pieces.toLocaleString()} pcs · ${s.bagsN} bags</div></div><span class="go">›</span></div>`; }
+function rHome(){
+  const rec=recentSets().map(setOf).filter(Boolean);
+  ensureSets(recentSets().filter(n=>!setOf(n)));
+  $("homeRecent").innerHTML=rec.length?`<h3 class="sec">Continue sorting</h3>${rec.map(setCard).join("")}`:"";
+  $("homeDemo").innerHTML=`<h3 class="sec">${rec.length?"More sets to try":"Or try one of these"}</h3>`+CATALOG.filter(s=>!rec.includes(s)).slice(0,10).map(setCard).join("");
+  document.querySelectorAll("[data-view=home] .pickset").forEach(el=>el.onclick=()=>openSet(el.dataset.num));
+}
+async function openSet(num,url){
+  if(!SETS_BY_NUM[num]){ toast("Loading set "+num+"…");
+    try{ await loadLiveSet(num,url); }catch(e){ toast(/none|empty/.test(e.message)?`No bag-by-bag list for ${num} yet.`:"Couldn't reach the set library. Check your connection."); return; } }
+  rememberSet(num); st.activeOrder=null; useSet(SETS_BY_NUM[num]); st.tab="sort"; render();
+}
+function homePick(num,url){ $("hac").classList.remove("on"); $("hsearch").value=""; $("hsearch").blur(); openSet(num,url); }
+const hRender=()=>acRenderFor("hsearch","hac",homePick);
 async function acPick(num,url){
   $("ac").classList.remove("on"); $("search").value=num; $("search").blur();
   if(!SETS_BY_NUM[num]){ toast("Loading set "+num+"…"); try{ await loadLiveSet(num,url); toast(`Added ${setOf(num).name} · ${setOf(num).bagsN} bags`);}catch(e){ toast("Couldn't load set "+num+"."); } }
@@ -607,7 +643,7 @@ restoreLiveSets();
 /* ===== people, shelves and orders: live from Firebase (module script at the end of the page) ===== */
 let USERS={};                       // uid -> {name, city, photo}, every signed-up user
 const FEE=0.10;
-const fresh=()=>({role:"buyer",tab:"discover",shelves:{},orders:[],activeOrder:null});
+const fresh=()=>({role:"sort",tab:"home",shelves:{},orders:[],activeOrder:null});
 let st=fresh();
 let ME_BUYER=null, ME_SELLER=null;  // both are the signed-in user's uid (one account can buy and sell)
 const FB=()=>window.BP_FB;
@@ -672,10 +708,10 @@ const owners=num=>Object.entries(st.shelves).filter(([u,l])=>u!==ME_BUYER&&l.inc
 
 /* ===== rendering ===== */
 function render(keepScroll){
-  $("roleBuyer").classList.toggle("on",st.role==="buyer"); $("roleSeller").classList.toggle("on",st.role==="seller");
+  $("roleSort").classList.toggle("on",st.role==="sort"); $("roleBuyer").classList.toggle("on",st.role==="buyer"); $("roleSeller").classList.toggle("on",st.role==="seller");
   updPersona();
-  const tabs = st.role==="buyer"
-    ? [["discover","🔍","Discover"],["orders","🧾","My orders"]]
+  const tabs = st.role==="sort" ? [["home","🔍","Find a set"],["sort","📷","Scan & sort"]]
+    : st.role==="buyer" ? [["discover","🛒","Discover"],["orders","🧾","My orders"]]
     : [["sort","📷","Scan & sort"],["requests","📬","Requests"],["shelf","🗄️","My shelf"]];
   if(!tabs.some(t=>t[0]===st.tab)) st.tab=tabs[0][0];
   const reqCount=st.orders.filter(o=>o.seller===ME_SELLER&&o.status==="matched").length;
@@ -685,7 +721,7 @@ function render(keepScroll){
   $("nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{st.tab=b.dataset.tab;render();});
   const view=(!ME_BUYER&&["orders","requests","shelf"].includes(st.tab))?"signin":st.tab;
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on",v.dataset.view===view));
-  if(view!=="signin") ({discover:rDiscover,orders:rOrders,requests:rRequests,shelf:rShelf,sort:rSort})[view]();
+  if(view!=="signin") ({home:rHome,discover:rDiscover,orders:rOrders,requests:rRequests,shelf:rShelf,sort:rSort})[view]();
   if(st.tab!=="sort") stopSorter();
   if(!keepScroll) window.scrollTo(0,0);
 }
@@ -713,6 +749,11 @@ function rDiscover(){
 }
 $("search").oninput=()=>{ rDiscover(); acRender(); if(!LIB&&!libLoading&&$("search").value.trim().length>=1) libIndex().then(acRender); };
 $("search").onfocus=()=>{ if(!LIB) libIndex().then(()=>{ if(document.activeElement===$("search")) acRender(); }); acRender(); };
+$("hsearch").oninput=()=>{ hRender(); if(!LIB&&!libLoading&&$("hsearch").value.trim()) libIndex().then(hRender); };
+$("hsearch").onfocus=()=>{ if(!LIB) libIndex().then(()=>{ if(document.activeElement===$("hsearch")) hRender(); }); hRender(); };
+$("hsearch").onkeydown=e=>{ if(e.key!=="Enter") return; const q=$("hsearch").value.trim(); const m=q&&acMatches(q);
+  if(m&&m.length&&(m.length===1||m[0].num===q)) homePick(m[0].num,m[0].url); else if(/^\d{4,6}$/.test(q)) homePick(q); };
+document.addEventListener("click",e=>{ if(!e.target.closest("[data-view=home] .acwrap")) $("hac").classList.remove("on"); });
 document.addEventListener("click",e=>{ if(!e.target.closest(".acwrap")) $("ac").classList.remove("on"); });
 
 let wishSet=null;
@@ -830,18 +871,15 @@ function rSort(){
   if(o&&SETS_BY_NUM[o.set]&&SET!==SETS_BY_NUM[o.set]) useSet(SETS_BY_NUM[o.set]);
   if(o){ const s=setOf(o.set); $("sortTitle").textContent=`Sort · ${s.name}`; $("sortSub").textContent=`Order #${o.no} for ${who(o.buyer).name}. Pick a bag, sweep the phone over the pile, and bag the highlighted pieces.`;
     if(o.status==="paid"&&!o._startReq){ o._startReq=true; updOrder(o,{status:"sorting"}); } }
-  else { $("sortTitle").textContent="Sort"; $("sortSub").textContent="Practice mode. Pick one of 10 real LEGO sets below: the demo pile is that set's real pieces, sorted by its real bags."; }
+  else { $("sortTitle").textContent="Scan & sort"; $("sortSub").textContent="Spread the pieces in one layer, start the camera, pick a bag below, and collect the highlighted pieces."; }
   renderBags();
 }
 function useSet(st2){ Tracker.reset(); SET=st2; refs=st2.refs||{}; selBag=1; demoScene=null; S.scale=null; if(mode==="demo"){demoScene=makeDemoScene(SET);} renderBags(); }
 function renderBags(){
-  const sw=$("setswitch"); const opts=REAL_SETS.map(r=>[r.num,`${r.num} ${r.name} · ${r.pieces} pcs · ${r.bagsN} bags`,SETS_BY_NUM[r.num]]).concat([["test","Test set · your own pieces",SET_TEST],["live","+ Load any set by number…",null]]);
-  sw.innerHTML=`<select id="setSel">${opts.map(([k,l,x])=>`<option value="${k}" ${SET===x?"selected":""}>${l}</option>`).join("")}</select>`;
-  $("setSel").onchange=async e=>{const v=e.target.value;
-    if(v==="live"){ const n=(prompt("LEGO set number (e.g. 10282)")||"").trim(); if(!/^\d{3,6}/.test(n)){renderBags();return;}
-      toast("Loading set "+n+"…"); try{ const k=await loadLiveSet(n); useSet(SETS_BY_NUM[k]); toast("Loaded "+SETS_BY_NUM[k].name); }catch(err){ toast("No bag inventory found for "+n+"."); renderBags(); } return; }
-    useSet(v==="test"?SET_TEST:SETS_BY_NUM[v]);};
   const o=curOrder(), done=o?o.bagsDone:[];
+  const sw=$("setswitch");
+  sw.innerHTML=`<div class="setbar"><div><div class="t">${esc(SET.name)}</div><div class="s">${total()} parts · ${bags().length} bags</div></div>${o?"":`<button class="btn ghost sm" id="chgSet">Change set</button>`}</div>`;
+  if($("chgSet")) $("chgSet").onclick=()=>{ st.role="sort"; st.tab="home"; render(); setTimeout(()=>$("hsearch").focus(),50); };
   const el=$("bagchips"); el.innerHTML="";
   const mk=(b)=>{const d=document.createElement("button"); const items=b?SET.items.filter(i=>+i.bag===b):SET.items, q=items.reduce((a,i)=>a+i.qty,0);
     const have=b?q-bagLeft(b):0;
@@ -1387,6 +1425,7 @@ $("camBtn").onclick=async()=>{ $("camErr").textContent="";
   catch(e){ $("camErr").textContent="The camera only works when the app is opened directly in a browser over https. You can use the demo pile for now."; } };
 
 /* role switch & reset */
+$("roleSort").onclick=()=>{st.role="sort";st.tab="home";render();};
 $("roleBuyer").onclick=()=>{st.role="buyer";st.tab="orders";if(!st.orders.length)st.tab="discover";render();};
 $("roleSeller").onclick=()=>{st.role="seller";st.tab="requests";render();};
 $("authBtn").onclick=()=>{ if(ME_BUYER){ if(FB()) FB().signOut(); } else signIn(); };
