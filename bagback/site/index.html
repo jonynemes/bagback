@@ -121,7 +121,27 @@ input[type=range]{width:100%;accent-color:var(--brand2)}
 .setswitch{display:flex;gap:8px;margin-top:12px}
 .setbar{flex:1;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .setbar .t{font-weight:800;font-size:14px}.setbar .s{font-size:12px;color:var(--mut)}
-h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:22px 0 8px}
+h3.sec{font-size:15px;font-weight:800;color:var(--ink);margin:24px 0 8px}
+/* guided "Bag it" flow: three real steps, so they are numbered */
+.stepper{display:flex;gap:8px;list-style:none;padding:0;margin:2px 0 16px;counter-reset:s}
+.stepper li{flex:1;counter-increment:s;font-size:12px;font-weight:600;color:var(--mut);display:flex;flex-direction:column;gap:6px}
+.stepper li::before{content:"";height:5px;border-radius:99px;background:var(--line)}
+.stepper li span::before{content:counter(s) ". "}
+.stepper li.on{color:var(--ink)}.stepper li.on::before{background:linear-gradient(90deg,var(--brand),var(--brand2))}
+.stepper li.done::before{background:var(--ok)}
+h2.hero{font-size:28px;line-height:1.12;letter-spacing:-.02em;margin:4px 0 8px;max-width:16ch}
+.hint-line{font-size:12.5px;color:var(--mut);margin:8px 2px 14px;line-height:1.45}
+ol.prep{list-style:none;padding:0;margin:10px 0 18px;counter-reset:p}
+ol.prep li{position:relative;padding:12px 14px 12px 48px;background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:8px;font-size:14px;line-height:1.45;color:var(--mut);counter-increment:p}
+ol.prep li::before{content:counter(p);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-weight:800;font-size:13px;display:grid;place-items:center}
+ol.prep li b{display:block;color:var(--ink);margin-bottom:2px}
+ol.prep .mat{display:block;height:16px;border-radius:6px;margin-top:8px;box-shadow:inset 0 0 0 1px #0002}
+.blist .bitem{display:flex;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.blist img{width:44px;height:44px;object-fit:contain;border-radius:8px;background:#fff;flex:0 0 auto}
+.blist .n{font-weight:700;font-size:14px}.blist .m{font-size:12px;color:var(--mut)}
+.pbar.sm{height:4px;margin:6px 0 0}
+.bagdone{border:2px solid var(--c);background:color-mix(in srgb,var(--c) 10%,#fff);border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:14px;line-height:1.45}
+.bagdone .btn{margin-top:10px}
 .pickset .go{margin-left:auto;font-size:26px;color:var(--mut);padding:0 4px}
 [data-view=home] .search{font-size:17px;padding:16px}
 .setswitch select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;font:inherit;font-weight:700;font-size:14px}
@@ -163,7 +183,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <header>
   <div class="hrow">
     <div class="logo"><i></i>Backpack</div>
-    <div class="seg"><button id="roleSort" class="on">Sort</button><button id="roleBuyer">Buy</button><button id="roleSeller">Sell</button></div>
+    <div class="seg"><button id="roleSort" class="on">Bag it</button><button id="roleBuyer">Buy</button><button id="roleSeller">Sell</button></div>
   </div>
   <div class="persona"><span id="persona"></span><a id="authBtn">Sign in</a></div>
 </header>
@@ -171,11 +191,25 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <main>
   <!-- SORT: home = find the set you're sorting -->
   <section class="view" data-view="home">
-    <h2>Which set are you sorting?</h2>
-    <p class="sub">Search by set number or name. We have the bag-by-bag parts list for 1,700+ LEGO sets. Then point your camera at the pile and we'll show which pieces go in each bag.</p>
-    <div class="acwrap"><input class="search" id="hsearch" placeholder="Set number or name, e.g. 76408 or Hogwarts" autocomplete="off" inputmode="search" enterkeyhint="search"><div class="ac" id="hac"></div></div>
+    <div class="steps" id="homeSteps"></div>
+    <h2 class="hero">Which set are you bagging back?</h2>
+    <p class="sub">Type the set number or its name. We know which pieces go in which numbered bag for 1,700+ LEGO sets.</p>
+    <div class="acwrap"><input class="search" id="hsearch" placeholder="e.g. 76408 or Hogwarts" autocomplete="off" inputmode="search" enterkeyhint="search" aria-label="Set number or name"><div class="ac" id="hac"></div></div>
+    <p class="hint-line">The number is printed on the front of the box and on the cover of every instruction booklet.</p>
+    <button class="btn ghost block" id="browseBtn">Browse all sets</button>
+    <div id="browse"></div>
     <div id="homeRecent"></div>
     <div id="homeDemo"></div>
+  </section>
+
+  <!-- SORT: get ready = how to lay out the pieces for this set -->
+  <section class="view" data-view="prep">
+    <div class="steps" id="prepSteps"></div>
+    <div id="prepSet"></div>
+    <h2>Get your pieces ready</h2>
+    <ol class="prep" id="prepList"></ol>
+    <button class="btn pri block" id="prepGo">Start camera</button>
+    <button class="btn ghost block" id="prepDemo" style="margin-top:8px">Try it first with a demo pile</button>
   </section>
 
   <!-- BUYER: discover -->
@@ -220,6 +254,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 
   <!-- SELLER: sort -->
   <section class="view" data-view="sort">
+    <div class="steps" id="sortSteps"></div>
     <h2 id="sortTitle">Sort</h2>
     <p class="sub" id="sortSub"></p>
     <div class="stage" id="stage">
@@ -601,19 +636,70 @@ function acRenderFor(inp,bx,pick){
 const RECENT_KEY="bp_recent";
 const recentSets=()=>{ try{ const a=JSON.parse(localStorage.getItem(RECENT_KEY)||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } };
 function rememberSet(num){ try{ localStorage.setItem(RECENT_KEY,JSON.stringify([num,...recentSets().filter(n=>n!==num)].slice(0,8))); }catch(e){} }
-function setCard(s){ return `<div class="card setrow pickset" data-num="${s.num}" style="cursor:pointer"><img class="thumb" ${imgAttrs(s)} alt="">
-  <div class="meta"><div class="t">${esc(s.name)}</div><div class="s">${s.num} · ${s.pieces.toLocaleString()} pcs · ${s.bagsN} bags</div></div><span class="go">›</span></div>`; }
+/* saved progress of a set in "Bag it" mode (read straight from this device's storage) */
+function progressOf(num){
+  const d=SETS_BY_NUM[num]; if(!d) return null; let g=null;
+  try{ g=JSON.parse(localStorage.getItem("bp_got_practice_"+d.name)||"null"); }catch(e){}
+  const need=d.items.reduce((s,i)=>s+(+i.qty||0),0); if(!Array.isArray(g)||g.length!==d.items.length) return {have:0,need,bag:null,bagsN:new Set(d.items.map(i=>+i.bag)).size};
+  const have=d.items.reduce((s,it,i)=>s+Math.min(g[i]||0,+it.qty||0),0);
+  const bs=[...new Set(d.items.map(i=>+i.bag))].sort((a,b)=>a-b);
+  const bag=bs.find(b=>d.items.some((it,i)=>+it.bag===b&&(g[i]||0)<(+it.qty||0)))||null;
+  return {have,need,bag,bagsN:bs.length};
+}
+function setCard(s){ const p=progressOf(s.num), started=p&&p.have>0;
+  const line=started?(p.bag?`Bag ${p.bag} of ${p.bagsN} next · ${Math.round(p.have/p.need*100)}% done`:"All bags done ✓"):`${s.num} · ${s.pieces.toLocaleString()} pieces in ${s.bagsN} bags`;
+  return `<div class="card setrow pickset" data-num="${s.num}" style="cursor:pointer"><img class="thumb" ${imgAttrs(s)} alt="">
+  <div class="meta"><div class="t">${esc(s.name)}</div><div class="s">${line}</div>
+  ${started?`<div class="pbar sm"><i style="width:${Math.round(p.have/p.need*100)}%;background:var(--brand)"></i></div>`:""}</div><span class="go">›</span></div>`; }
+const STEP_NAMES=["Choose your set","Get ready","Sort into bags"];
+function stepsHTML(n){ return `<ol class="stepper">${STEP_NAMES.map((l,i)=>`<li class="${i<n?"done":i===n?"on":""}"><span>${l}</span></li>`).join("")}</ol>`; }
 function rHome(){
-  const rec=recentSets().map(setOf).filter(Boolean);
-  ensureSets(recentSets().filter(n=>!setOf(n)));
-  $("homeRecent").innerHTML=rec.length?`<h3 class="sec">Continue sorting</h3>${rec.map(setCard).join("")}`:"";
-  $("homeDemo").innerHTML=`<h3 class="sec">${rec.length?"More sets to try":"Or try one of these"}</h3>`+CATALOG.filter(s=>!rec.includes(s)).slice(0,10).map(setCard).join("");
+  $("homeSteps").innerHTML=stepsHTML(0);
+  const nums=recentSets(); ensureSets(nums.filter(n=>!setOf(n)));
+  const rec=nums.map(setOf).filter(Boolean);
+  const cont=rec.filter(s=>{ const p=progressOf(s.num); return p&&p.have>0&&p.bag; });
+  $("homeRecent").innerHTML=(cont.length?`<h3 class="sec">Continue where you left off</h3>${cont.map(setCard).join("")}`:"")
+    +(rec.length>cont.length?`<h3 class="sec">Recently opened</h3>${rec.filter(s=>!cont.includes(s)).map(setCard).join("")}`:"");
+  $("homeDemo").innerHTML=`<h3 class="sec">${rec.length?"Other sets":"Popular sets"}</h3>`+CATALOG.filter(s=>!rec.includes(s)&&!s.live).slice(0,10).map(setCard).join("");
+  $("browseBtn").textContent=LIB?`Browse all ${LIB.length.toLocaleString()} sets`:"Browse all sets";
   document.querySelectorAll("[data-view=home] .pickset").forEach(el=>el.onclick=()=>openSet(el.dataset.num));
+}
+/* full library list, newest first, revealed in pages */
+let browseN=0;
+function renderBrowse(){
+  const list=(LIB||[]).slice().sort((a,b)=>(+b[2]||0)-(+a[2]||0)||a[0].localeCompare(b[0],undefined,{numeric:true}));
+  $("browse").innerHTML=`<h3 class="sec">All sets, newest first</h3><div class="blist">${list.slice(0,browseN).map(r=>
+    `<div class="bitem" data-num="${r[0]}" data-url="${r[5]||""}"><img ${imgAttrs({num:r[0],name:r[1],cols:[],pieces:r[4]})} alt=""><div><div class="n">${esc(r[1])}</div><div class="m">${r[0]} · ${r[2]||"–"} · ${r[3]} bags</div></div></div>`).join("")}</div>`
+    +(browseN<list.length?`<button class="btn ghost block" id="browseMore">Show more</button>`:"");
+  $("browse").querySelectorAll(".bitem").forEach(el=>el.onclick=()=>openSet(el.dataset.num,el.dataset.url));
+  if($("browseMore")) $("browseMore").onclick=()=>{ browseN+=60; renderBrowse(); };
+}
+/* step 2: lay-out advice for this set, including the background colour that stands out most */
+const MATS=[["dark green","#2f6a52"],["blue","#2b4f86"],["purple","#5b4a7a"],["burgundy","#8a3b4f"],["white","#f4f4f4"],["black","#1d1d1d"],["light grey","#c9cbcc"]];
+function bestMat(){ const used=[...new Set(SET.items.map(i=>i.color))].filter(k=>PALETTE[k]&&PALETTE[k].lab);
+  let best=MATS[0],bd=-1; for(const m of MATS){ const L=hexToLab(m[1]); let d=1e9;
+    for(const k of used){ const P=PALETTE[k].lab; d=Math.min(d,Math.hypot((L[0]-P[0])*0.6,L[1]-P[1],L[2]-P[2])); } if(d>bd){bd=d;best=m;} } return best; }
+function rPrep(){
+  $("prepSteps").innerHTML=stepsHTML(1);
+  const s=CATALOG.find(c=>SETS_BY_NUM[c.num]===SET); const m=bestMat();
+  $("prepSet").innerHTML=s?`<div class="card setrow"><img class="thumb" ${imgAttrs(s)} alt=""><div class="meta"><div class="t">${esc(s.name)}</div><div class="s">${s.num} · ${total().toLocaleString()} pieces in ${bags().length} bags</div></div><button class="btn ghost sm" id="prepChange">Change</button></div>`:"";
+  $("prepList").innerHTML=[
+    `<b>Put down a plain ${m[0]} surface.</b> A towel, sheet or piece of card works. Hardly any pieces in this set are close to ${m[0]}, so each one stands out.<i class="mat" style="background:${m[1]}"></i>`,
+    `<b>Spread the pieces in one layer.</b> Pieces lying on top of each other get a white ! so you know to move them apart.`,
+    `<b>Use even light.</b> Daylight or a ceiling lamp; avoid strong shadows and glare.`,
+    `<b>Hold the phone 30–40 cm above the pile,</b> camera facing straight down.`,
+    `<b>Have empty bags ready,</b> one per bag number. You'll fill them in order: bag 1 first.`
+  ].map(t=>`<li>${t}</li>`).join("");
+  if($("prepChange")) $("prepChange").onclick=()=>{ st.tab="home"; render(); };
 }
 async function openSet(num,url){
   if(!SETS_BY_NUM[num]){ toast("Loading set "+num+"…");
-    try{ await loadLiveSet(num,url); }catch(e){ toast(/none|empty/.test(e.message)?`No bag-by-bag list for ${num} yet.`:"Couldn't reach the set library. Check your connection."); return; } }
-  rememberSet(num); st.activeOrder=null; useSet(SETS_BY_NUM[num]); st.tab="sort"; render();
+    try{ await loadLiveSet(num,url); }catch(e){ toast(/none|empty/.test(e.message)?`There's no bag-by-bag list for ${num} yet. Try another set.`:"Can't reach the set library. Check your connection and try again."); return; } }
+  rememberSet(num); st.activeOrder=null; st.role="sort"; useSet(SETS_BY_NUM[num]);
+  const p=progressOf(num); selBag=(p&&p.bag)||bags()[0]||1;
+  st.tab=p&&p.have>0?"sort":"prep";             // started sets resume straight in the scanner
+  if(st.tab==="sort") toast(p.bag?`Welcome back. Carry on with bag ${p.bag}.`:"All bags of this set are done.");
+  render();
 }
 function homePick(num,url){ $("hac").classList.remove("on"); $("hsearch").value=""; $("hsearch").blur(); openSet(num,url); }
 const hRender=()=>acRenderFor("hsearch","hac",homePick);
@@ -710,10 +796,13 @@ const owners=num=>Object.entries(st.shelves).filter(([u,l])=>u!==ME_BUYER&&l.inc
 function render(keepScroll){
   $("roleSort").classList.toggle("on",st.role==="sort"); $("roleBuyer").classList.toggle("on",st.role==="buyer"); $("roleSeller").classList.toggle("on",st.role==="seller");
   updPersona();
-  const tabs = st.role==="sort" ? [["home","🔍","Find a set"],["sort","📷","Scan & sort"]]
+  // "Bag it" is a guided flow (choose set → get ready → sort), so it has no tab bar
+  const tabs = st.role==="sort" ? []
     : st.role==="buyer" ? [["discover","🛒","Discover"],["orders","🧾","My orders"]]
     : [["sort","📷","Scan & sort"],["requests","📬","Requests"],["shelf","🗄️","My shelf"]];
-  if(!tabs.some(t=>t[0]===st.tab)) st.tab=tabs[0][0];
+  if(st.role==="sort"){ if(!["home","prep","sort"].includes(st.tab)) st.tab="home"; }
+  else if(!tabs.some(t=>t[0]===st.tab)) st.tab=tabs[0][0];
+  $("nav").style.display=tabs.length?"":"none";
   const reqCount=st.orders.filter(o=>o.seller===ME_SELLER&&o.status==="matched").length;
   const ordCount=st.orders.filter(o=>o.buyer===ME_BUYER&&(o.status==="accepted"||o.status==="shipped")).length;
   $("nav").innerHTML=tabs.map(([k,ic,l])=>{const b=k==="requests"?reqCount:k==="orders"?ordCount:0;
@@ -721,7 +810,7 @@ function render(keepScroll){
   $("nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{st.tab=b.dataset.tab;render();});
   const view=(!ME_BUYER&&["orders","requests","shelf"].includes(st.tab))?"signin":st.tab;
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on",v.dataset.view===view));
-  if(view!=="signin") ({home:rHome,discover:rDiscover,orders:rOrders,requests:rRequests,shelf:rShelf,sort:rSort})[view]();
+  if(view!=="signin") ({home:rHome,prep:rPrep,discover:rDiscover,orders:rOrders,requests:rRequests,shelf:rShelf,sort:rSort})[view]();
   if(st.tab!=="sort") stopSorter();
   if(!keepScroll) window.scrollTo(0,0);
 }
@@ -754,6 +843,12 @@ $("hsearch").onfocus=()=>{ if(!LIB) libIndex().then(()=>{ if(document.activeElem
 $("hsearch").onkeydown=e=>{ if(e.key!=="Enter") return; const q=$("hsearch").value.trim(); const m=q&&acMatches(q);
   if(m&&m.length&&(m.length===1||m[0].num===q)) homePick(m[0].num,m[0].url); else if(/^\d{4,6}$/.test(q)) homePick(q); };
 document.addEventListener("click",e=>{ if(!e.target.closest("[data-view=home] .acwrap")) $("hac").classList.remove("on"); });
+$("browseBtn").onclick=async()=>{ const b=$("browseBtn");
+  if(!LIB){ b.disabled=true; b.textContent="Loading the set library…"; await libIndex(); b.disabled=false; }
+  if(!LIB){ b.textContent="Can't reach the set library. Tap to try again."; return; }
+  browseN=60; b.style.display="none"; renderBrowse(); };
+$("prepGo").onclick=()=>{ st.tab="sort"; render(); $("camBtn").click(); };
+$("prepDemo").onclick=()=>{ st.tab="sort"; render(); $("demoBtn").click(); };
 document.addEventListener("click",e=>{ if(!e.target.closest(".acwrap")) $("ac").classList.remove("on"); });
 
 let wishSet=null;
@@ -871,7 +966,8 @@ function rSort(){
   if(o&&SETS_BY_NUM[o.set]&&SET!==SETS_BY_NUM[o.set]) useSet(SETS_BY_NUM[o.set]);
   if(o){ const s=setOf(o.set); $("sortTitle").textContent=`Sort · ${s.name}`; $("sortSub").textContent=`Order #${o.no} for ${who(o.buyer).name}. Pick a bag, sweep the phone over the pile, and bag the highlighted pieces.`;
     if(o.status==="paid"&&!o._startReq){ o._startReq=true; updOrder(o,{status:"sorting"}); } }
-  else { $("sortTitle").textContent="Scan & sort"; $("sortSub").textContent="Spread the pieces in one layer, start the camera, pick a bag below, and collect the highlighted pieces."; }
+  else { $("sortTitle").textContent=`Bag ${selBag||1} of ${bags().length}`; $("sortSub").textContent="Point the camera at the pile. Pieces for this bag light up: pick them into the bag. Lifting a piece ticks it off; you can also tap it."; }
+  $("sortSteps").innerHTML=(!o&&st.role==="sort")?stepsHTML(2):"";
   renderBags();
 }
 function useSet(st2){ Tracker.reset(); SET=st2; refs=st2.refs||{}; selBag=1; demoScene=null; S.scale=null; if(mode==="demo"){demoScene=makeDemoScene(SET);} renderBags(); }
@@ -879,6 +975,7 @@ function renderBags(){
   const o=curOrder(), done=o?o.bagsDone:[];
   const sw=$("setswitch");
   sw.innerHTML=`<div class="setbar"><div><div class="t">${esc(SET.name)}</div><div class="s">${total()} parts · ${bags().length} bags</div></div>${o?"":`<button class="btn ghost sm" id="chgSet">Change set</button>`}</div>`;
+  if(!o&&st.role==="sort") $("sortTitle").textContent=selBag?`Bag ${selBag} of ${bags().length}`:"All bags";
   if($("chgSet")) $("chgSet").onclick=()=>{ st.role="sort"; st.tab="home"; render(); setTimeout(()=>$("hsearch").focus(),50); };
   const el=$("bagchips"); el.innerHTML="";
   const mk=(b)=>{const d=document.createElement("button"); const items=b?SET.items.filter(i=>+i.bag===b):SET.items, q=items.reduce((a,i)=>a+i.qty,0);
@@ -1326,7 +1423,9 @@ function checklistHTML(bag){
   const g=got(), rows=SET.items.map((it,i)=>({it,i})).filter(x=>+x.it.bag===bag);
   const need=rows.reduce((s,x)=>s+(+x.it.qty||0),0), have=rows.reduce((s,x)=>s+Math.min(g[x.i],+x.it.qty||0),0);
   const canUndo=undoStack.length&&undoStack[undoStack.length-1].k===gotKey();
-  return `<div class="cprog"><div class="t">Bag ${bag} · ${have}/${need} collected</div>${canUndo?`<button class="btn ghost sm" id="undoPick">Undo</button>`:""}</div>
+  const nextBag=bags().find(b=>b!==bag&&bagLeft(b)>0);
+  const doneBanner=need&&have>=need?`<div class="bagdone" style="--c:${bagColor(bag)}"><b>Bag ${bag} is complete.</b> ${nextBag?`Close it and put it aside.<button class="btn pri block" id="nextBag" data-b="${nextBag}">Start bag ${nextBag}</button>`:"That was the last one: every bag of this set is full. 🎉"}</div>`:"";
+  return doneBanner+`<div class="cprog"><div class="t">Bag ${bag} · ${have}/${need} collected</div>${canUndo?`<button class="btn ghost sm" id="undoPick">Undo</button>`:""}</div>
     <div class="pbar"><i style="width:${need?Math.round(have/need*100):0}%;background:${bagColor(bag)}"></i></div>
     <div class="ptiles">${rows.map(({it,i})=>{ const q=+it.qty||0, n=Math.min(g[i],q), cls=n>=q?"full":n?"part":"";
       return `<div class="ptile ${cls}" data-i="${i}" style="--c:${bagColor(bag)}"><img src="${partImg(it)}" onerror="tileFb(this)" loading="lazy" alt="">
@@ -1338,6 +1437,9 @@ function wireChecklist(){
   p.querySelectorAll(".ptile").forEach(el=>el.onclick=e=>{ if(e.target.closest(".pminus")) return; const i=+el.dataset.i, g=got();
     if(g[i]<(+SET.items[i].qty||0)){ g[i]++; saveGot(); undoStack.push({k:gotKey(),i}); renderBags(); } });
   p.querySelectorAll(".pminus").forEach(b=>b.onclick=()=>{ const i=+b.dataset.m, g=got(); if(g[i]>0){ g[i]--; saveGot(); renderBags(); } });
+  if($("nextBag")) $("nextBag").onclick=()=>{ selBag=+$("nextBag").dataset.b; Tracker.tracks.forEach(t=>t.focus=false);
+    if(st.tab==="sort"&&!curOrder()) $("sortTitle").textContent=`Bag ${selBag} of ${bags().length}`;
+    renderBags(); if(result){ labelComps(result); buildOverlay(); } window.scrollTo({top:0,behavior:"smooth"}); toast(`Now bag ${selBag}. Its pieces light up on the mat.`); };
   if($("undoPick")) $("undoPick").onclick=()=>{ const u=undoStack.pop(); if(!u||u.k!==gotKey()) return; const g=got(); if(g[u.i]>0){ g[u.i]--; saveGot(); } toast("Undone"); renderBags(); };
 }
 function markTiles(){ const f=new Set(Tracker.tracks.filter(t=>t.focus&&t.item!=null).map(t=>t.item));
@@ -1423,6 +1525,9 @@ $("camBtn").onclick=async()=>{ $("camErr").textContent="";
   try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false});
     video.srcObject=stream; await video.play(); mode="cam"; goLive(); }
   catch(e){ $("camErr").textContent="The camera only works when the app is opened directly in a browser over https. You can use the demo pile for now."; } };
+
+/* first frame of the camera in "Bag it": say what to do */
+{ const _goLive=goLive; goLive=function(){ _goLive(); if(st.role==="sort"&&!curOrder()&&selBag) setTimeout(()=>toast(`Pieces for bag ${selBag} light up. Pick them into the bag.`),900); }; }
 
 /* role switch & reset */
 $("roleSort").onclick=()=>{st.role="sort";st.tab="home";render();};
