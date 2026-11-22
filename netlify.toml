@@ -1,0 +1,4 @@
+# Netlify: static site, no build step. Proxies live in bagback/site/_redirects.
+[build]
+  publish = "bagback/site"
+  command = ""
